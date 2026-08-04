@@ -296,23 +296,31 @@ func KnowledgeServiceChatStream(serviceChatReq *ServiceChatRequest) (err error) 
 }
 
 func main() {
-	// 读取用户输入的问题
-	fmt.Print("请输入您的问题: ")
 	reader := bufio.NewReader(os.Stdin)
-	query, err := reader.ReadString('\n')
-	if err != nil {
-		fmt.Printf("读取输入失败: %s\n", err.Error())
-		return
-	}
-	query = strings.TrimSpace(query)
-	if query == "" {
-		fmt.Println("问题不能为空")
-		return
-	}
+	fmt.Println("知识库问答服务已启动，输入问题开始问答（输入 exit 或 quit 退出）")
+	for {
+		fmt.Print("\n请输入您的问题: ")
+		query, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Printf("读取输入失败: %s\n", err.Error())
+			return
+		}
+		query = strings.TrimSpace(query)
+		if query == "" {
+			continue
+		}
+		// 退出指令
+		if query == "exit" || query == "quit" {
+			fmt.Println("已退出问答服务")
+			return
+		}
 
-	// 以下两个函数根据需要二选一
-	//纯检索类型的知识服务或者生成类型知识服务非流式返回使用该函数
-	KnowledgeServiceChat(GenerateServiceChatReq(false, query))
-	//生成类型的知识服务流式返回 使用该函数
-	//KnowledgeServiceChatStream(GenerateServiceChatReq(true, query))
+		// 以下两个函数根据需要二选一
+		//纯检索类型的知识服务或者生成类型知识服务非流式返回使用该函数
+		if err := KnowledgeServiceChat(GenerateServiceChatReq(false, query)); err != nil {
+			fmt.Printf("查询失败: %s\n", err.Error())
+		}
+		//生成类型的知识服务流式返回 使用该函数
+		//KnowledgeServiceChatStream(GenerateServiceChatReq(true, query))
+	}
 }
