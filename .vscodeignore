@@ -1,0 +1,17 @@
+.vscode/**
+.vscode-test/**
+src/**
+webview-ui/src/**
+webview-ui/node_modules/**
+webview-ui/tsconfig.json
+webview-ui/vite.config.ts
+webview-ui/package.json
+go-backend/**
+node_modules/**
+tsconfig.json
+webpack.config.js
+.gitignore
+.apikey
+**/*.map
+**/*.ts
+README.md

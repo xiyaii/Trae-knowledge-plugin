@@ -1,0 +1,81 @@
+{
+  "name": "trae-kb-assistant",
+  "displayName": "知识库助手",
+  "description": "基于火山引擎知识库的智能问答助手（Trae 企业版）",
+  "version": "0.1.0",
+  "publisher": "trae-cn",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "kb-assistant",
+          "title": "知识库助手",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "kb-assistant": [
+        {
+          "type": "webview",
+          "id": "kbAssistant.chatView",
+          "name": "问答"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "kbAssistant.openChat",
+        "title": "知识库助手: 打开问答"
+      },
+      {
+        "command": "kbAssistant.configure",
+        "title": "知识库助手: 配置"
+      },
+      {
+        "command": "kbAssistant.clearChat",
+        "title": "知识库助手: 清空对话"
+      }
+    ],
+    "configuration": {
+      "title": "知识库助手",
+      "properties": {
+        "kbAssistant.serviceResourceId": {
+          "type": "string",
+          "default": "kb-service-39d7c93c630152d",
+          "description": "知识服务 ID"
+        },
+        "kbAssistant.maxHistory": {
+          "type": "number",
+          "default": 10,
+          "description": "多轮对话保留的历史轮数"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack --mode development",
+    "watch": "webpack --mode development --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-webview": "cd webview-ui && npm run build",
+    "watch-webview": "cd webview-ui && npm run dev",
+    "build-go": "cd go-backend && GOOS=darwin GOARCH=arm64 go build -ldflags \"-X main.builtInAPIKey=$(cat ../.apikey 2>/dev/null || echo $TRAE_KB_API_KEY)\" -o ../bin/kb-server-darwin-arm64 .",
+    "build-all": "npm run build-go && npm run compile-webview && npm run package",
+    "package-vsix": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.80.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4"
+  }
+}

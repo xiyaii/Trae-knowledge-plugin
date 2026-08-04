@@ -13,10 +13,27 @@ import (
 	"time"
 )
 
-var KnowledgeBaseDomain = "api-knowledgebase.mlp.cn-beijing.volces.com"          // 知识库域名
-var ServiceChatPath = "/api/knowledge/service/chat"                              // 支持知识服务的知识库检索接口
-var APIKey = "JDEAQ7QJVARQ0RVDR34MW78DWRJG5K9VZNK2WHJN2JQX787KHTA060R30DHP6RV3E" // 用于知识服务鉴权的apikey
-var ServiceResourceID = "kb-service-39d7c93c630152d"                             // 您在平台上创建的知识服务ID
+var KnowledgeBaseDomain = "api-knowledgebase.mlp.cn-beijing.volces.com" // 知识库域名
+var ServiceChatPath = "/api/knowledge/service/chat"                     // 支持知识服务的知识库检索接口
+var APIKey = ""                                                         // 编译期通过 -ldflags "-X main.APIKey=xxx" 注入；运行时可用 TRAE_KB_API_KEY 覆盖
+var ServiceResourceID = "kb-service-39d7c93c630152d"                    // 您在平台上创建的知识服务ID
+
+// builtInAPIKey 由编译期 ldflags 注入，不对外暴露到 JS 层
+var builtInAPIKey = ""
+
+// LoadConfig 加载配置：优先环境变量（开发调试），其次编译期内置值
+func LoadConfig() error {
+	envKey := os.Getenv("TRAE_KB_API_KEY")
+	if envKey != "" {
+		APIKey = envKey
+	} else if builtInAPIKey != "" {
+		APIKey = builtInAPIKey
+	}
+	if APIKey == "" {
+		return fmt.Errorf("APIKey 未配置：请设置环境变量 TRAE_KB_API_KEY 或在编译时通过 -ldflags 注入")
+	}
+	return nil
+}
 
 type ServiceChatRequest struct {
 	ServiceResourceID string         `json:"service_resource_id,omitempty"` //要检索的知识服务ID
@@ -182,40 +199,39 @@ func GenerateServiceChatReq(stream bool, query string) *ServiceChatRequest {
 	}
 }
 
-// KnowledgeServiceChat 知识服务-非流式返回(检索类型的知识服务或者生成类型的知识服务非流式使用该函数)
-func KnowledgeServiceChat(serviceChatReq *ServiceChatRequest) error {
+// KnowledgeServiceChat 知识服务-非流式返回，返回完整响应供上层使用（不打印）
+func KnowledgeServiceChat(serviceChatReq *ServiceChatRequest) (*ServiceChatResponse, error) {
 	serviceChatReqBytes, _ := json.Marshal(serviceChatReq)
 	req := PrepareRequest("POST", ServiceChatPath, serviceChatReqBytes)
 	client := &http.Client{Timeout: 600 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("请求失败: %s\n", err.Error())
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var serviceChatResp *ServiceChatResponse
 	err = json.Unmarshal(body, &serviceChatResp)
 	if err != nil {
-		fmt.Printf("响应解析失败: %s, 原始返回: %s\n", err.Error(), string(body))
-		return err
+		return nil, fmt.Errorf("响应解析失败: %s, 原始返回: %s", err.Error(), string(body))
 	}
+	return serviceChatResp, nil
+}
 
-	// 只打印相似度最高的一条切片
-	if serviceChatResp.Data == nil || len(serviceChatResp.Data.ResultList) == 0 {
-		fmt.Println("未检索到相关信息")
-		return nil
+// SelectBestResult 从检索结果中选出相似度最高的一条（优先 rerank 得分，为 0 时退回向量得分）
+func SelectBestResult(resp *ServiceChatResponse) (*CollectionSearchResponseItem, error) {
+	if resp == nil || resp.Data == nil || len(resp.Data.ResultList) == 0 {
+		return nil, fmt.Errorf("未检索到相关信息")
 	}
 	var best *CollectionSearchResponseItem
 	bestScore := -1.0
-	for i := range serviceChatResp.Data.ResultList {
-		item := serviceChatResp.Data.ResultList[i]
-		// 优先使用 rerank 得分，若为 0 则退回向量得分
+	for i := range resp.Data.ResultList {
+		item := resp.Data.ResultList[i]
 		s := item.RerankScore
 		if s == 0 {
 			s = item.Score
@@ -225,15 +241,7 @@ func KnowledgeServiceChat(serviceChatReq *ServiceChatRequest) error {
 			best = item
 		}
 	}
-	fmt.Printf("共检索到 %d 条结果，展示相似度最高的一条:\n", serviceChatResp.Data.Count)
-	fmt.Printf("文档名称: %s\n", best.DocInfo.DocName)
-	fmt.Printf("切片标题: %s\n", best.ChunkTitle)
-	fmt.Printf("相似度得分: %.4f (rerank: %.4f)\n", best.Score, best.RerankScore)
-	fmt.Printf("内容:\n%s\n", best.Content)
-	if best.MdContent != "" {
-		fmt.Printf("Markdown内容:\n%s\n", best.MdContent)
-	}
-	return nil
+	return best, nil
 }
 
 // KnowledgeServiceChatStream 生成类型知识服务-流式返回（生成类型的知识服务流式返回使用该函数）
@@ -295,32 +303,150 @@ func KnowledgeServiceChatStream(serviceChatReq *ServiceChatRequest) (err error) 
 	return nil
 }
 
-func main() {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Println("知识库问答服务已启动，输入问题开始问答（输入 exit 或 quit 退出）")
-	for {
-		fmt.Print("\n请输入您的问题: ")
-		query, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Printf("读取输入失败: %s\n", err.Error())
-			return
-		}
-		query = strings.TrimSpace(query)
-		if query == "" {
+// ===================== JSON Lines 协议层 =====================
+// 扩展端（VS Code Extension）通过子进程方式启动本程序，
+// 经 stdin 写入请求（每行一个 JSON），经 stdout 输出响应（每行一个 JSON）。
+// APIKey 由扩展端通过环境变量 TRAE_KB_API_KEY 注入，不进入代码、不进 git。
+
+// KBRequest 扩展端发来的请求
+type KBRequest struct {
+	ID      string         `json:"id"`              // 请求 ID，用于多路复用匹配
+	Type    string         `json:"type"`            // "query"
+	Query   string         `json:"query"`           // 用户问题
+	Stream  bool           `json:"stream"`          // 是否流式（暂未启用，预留）
+	History []MessageParam `json:"history"`         // 多轮对话历史
+	Token   string         `json:"token,omitempty"` // 用户登录态（预留，暂不校验）
+}
+
+// KBResponse 返回给扩展端的响应
+type KBResponse struct {
+	ID    string      `json:"id"`
+	Type  string      `json:"type"` // "result" | "error"
+	Data  interface{} `json:"data,omitempty"`
+	Error string      `json:"error,omitempty"`
+}
+
+// ResultData 检索结果数据
+type ResultData struct {
+	Count       int     `json:"count"`
+	DocName     string  `json:"doc_name"`
+	ChunkTitle  string  `json:"chunk_title"`
+	Score       float64 `json:"score"`
+	RerankScore float64 `json:"rerank_score"`
+	Content     string  `json:"content"`
+	MdContent   string  `json:"md_content,omitempty"`
+}
+
+// VerifyAuth 预留：校验用户登录态/企业版订阅
+// TODO: 待确认 Trae 企业版 OpenAPI 鉴权方式后实现
+// 返回值: true=放行, false=拒绝
+func VerifyAuth(token string) bool {
+	// 当前阶段暂不校验，直接放行
+	// 后续接入 Trae 企业版鉴权：
+	// 1. 用 token 调用 Trae OpenAPI 校验订阅状态
+	// 2. 校验通过返回 true，否则 false
+	return true
+}
+
+// emitResponse 输出一行 JSON 响应到 stdout
+func emitResponse(resp KBResponse) {
+	bytes, _ := json.Marshal(resp)
+	fmt.Println(string(bytes))
+}
+
+// handleRequest 处理单个请求
+func handleRequest(req KBRequest) {
+	// 预留：鉴权校验
+	if !VerifyAuth(req.Token) {
+		emitResponse(KBResponse{
+			ID:    req.ID,
+			Type:  "error",
+			Error: "登录态校验失败：未购买 Trae 企业版或登录已失效",
+		})
+		return
+	}
+
+	// 调用知识库
+	chatReq := GenerateServiceChatReq(false, req.Query)
+	// 多轮对话历史拼接（history + 当前 query）
+	if len(req.History) > 0 {
+		chatReq.Messages = append(req.History, chatReq.Messages...)
+	}
+
+	chatResp, err := KnowledgeServiceChat(chatReq)
+	if err != nil {
+		emitResponse(KBResponse{
+			ID:    req.ID,
+			Type:  "error",
+			Error: err.Error(),
+		})
+		return
+	}
+
+	// 选出相似度最高的一条
+	best, err := SelectBestResult(chatResp)
+	if err != nil {
+		emitResponse(KBResponse{
+			ID:   req.ID,
+			Type: "result",
+			Data: ResultData{Count: 0},
+		})
+		return
+	}
+
+	emitResponse(KBResponse{
+		ID:   req.ID,
+		Type: "result",
+		Data: ResultData{
+			Count:       int(chatResp.Data.Count),
+			DocName:     best.DocInfo.DocName,
+			ChunkTitle:  best.ChunkTitle,
+			Score:       best.Score,
+			RerankScore: best.RerankScore,
+			Content:     best.Content,
+			MdContent:   best.MdContent,
+		},
+	})
+}
+
+// runServer JSON Lines 协议主循环：从 stdin 读请求，向 stdout 写响应
+func runServer() error {
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Buffer(make([]byte, 1024*1024), 10*1024*1024)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
 			continue
 		}
-		// 退出指令
-		if query == "exit" || query == "quit" {
-			fmt.Println("已退出问答服务")
-			return
+		var req KBRequest
+		if err := json.Unmarshal([]byte(line), &req); err != nil {
+			emitResponse(KBResponse{
+				Type:  "error",
+				Error: "请求解析失败: " + err.Error(),
+			})
+			continue
 		}
+		handleRequest(req)
+	}
+	return scanner.Err()
+}
 
-		// 以下两个函数根据需要二选一
-		//纯检索类型的知识服务或者生成类型知识服务非流式返回使用该函数
-		if err := KnowledgeServiceChat(GenerateServiceChatReq(false, query)); err != nil {
-			fmt.Printf("查询失败: %s\n", err.Error())
-		}
-		//生成类型的知识服务流式返回 使用该函数
-		//KnowledgeServiceChatStream(GenerateServiceChatReq(true, query))
+func main() {
+	// 从环境变量加载 APIKey（由扩展端/后端代理注入，不硬编码）
+	if err := LoadConfig(); err != nil {
+		emitResponse(KBResponse{
+			Type:  "error",
+			Error: err.Error(),
+		})
+		os.Exit(1)
+	}
+
+	// 启动 JSON Lines 协议主循环
+	if err := runServer(); err != nil {
+		emitResponse(KBResponse{
+			Type:  "error",
+			Error: "服务异常: " + err.Error(),
+		})
+		os.Exit(1)
 	}
 }
