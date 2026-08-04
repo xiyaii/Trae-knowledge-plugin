@@ -1,0 +1,40 @@
+src/webviewProvider.ts
+  s_96f14d8f830607::t_a2686b8737022a 6,17,39,43-45,48,55-62,64-79,82-83,128
+webview-ui/src/components/ChatMessage.tsx
+  s_96f14d8f830607::t_c913934fa6d550 3
+webview-ui/vite.config.ts
+  s_96f14d8f830607::t_f16dbb6cf8b80c 13-14,17,21
+webview-ui/src/hooks/useVsCode.ts
+  s_96f14d8f830607::t_e608d8d800b32b 2,9,12,16,28,32,37,40
+webview-ui/src/types.ts
+  s_96f14d8f830607::t_787e24394f9748 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "b9424db3a712ceeb5fe15341342823ff2cbba9a4",
+  "prompts": {},
+  "sessions": {
+    "s_96f14d8f830607": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a71899037546dab0526cf24",
+        "model": "Doubao-Seed-2.1-pro"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "tool_use_id": "6a71cc4ec2c8c7634f26daf3",
+        "client_type": "ide",
+        "operation_id": "6a71cc4ec2c8c7634f26daf3",
+        "source_scene": "agent",
+        "edit_kind": "file_edit",
+        "tool_type": "builtin",
+        "external_session_id": "6a71899037546dab0526cf24",
+        "runtime_client": "trae-tob-git-ai",
+        "session_id": "6a71899037546dab0526cf24",
+        "dedupe_key": "6a71899037546dab0526cf24:6a71cc4ec2c8c7634f26daf3:afterEdit:34381c20"
+      }
+    }
+  }
+}
