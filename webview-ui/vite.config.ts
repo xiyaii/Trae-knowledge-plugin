@@ -10,12 +10,14 @@ export default defineConfig({
     rollupOptions: {
       input: resolve(__dirname, 'src/index.tsx'),
       output: {
+        format: 'iife',
+        name: 'KBApp',
         entryFileNames: 'assets/index.js',
         assetFileNames: 'assets/index.[ext]',
-        chunkFileNames: 'assets/[name].js',
+        inlineDynamicImports: true,
       },
     },
-    // 禁用代码分割，确保单 JS 文件输出
     cssCodeSplit: false,
+    minify: false,
   },
 });

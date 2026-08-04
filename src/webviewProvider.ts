@@ -3,7 +3,7 @@ import * as path from 'path';
 import { GoBridge, KBResponse } from './goBridge';
 import { Secrets } from './secrets';
 
-interface ChatMessage {
+export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   source?: {
@@ -14,6 +14,7 @@ interface ChatMessage {
 }
 
 export class WebviewProvider implements vscode.WebviewViewProvider {
+  public static readonly viewType = 'kbAssistant.chatView';
   private view?: vscode.WebviewView;
   private messages: ChatMessage[] = [];
 
@@ -35,39 +36,51 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
   }
 
   private async handleMessage(msg: any) {
-    if (!this.view) {
-      return;
-    }
+    if (!this.view) return;
     switch (msg.type) {
       case 'query': {
         const query: string = msg.query;
+        const maxHistory = vscode.workspace
+          .getConfiguration('kbAssistant')
+          .get<number>('maxHistory', 10);
         const history = this.messages
           .filter((m) => !m.error)
-          .slice(-vscode.workspace.getConfiguration('kbAssistant').get('maxHistory', 10) * 2)
+          .slice(-maxHistory * 2)
           .map((m) => ({ role: m.role, content: m.content }));
 
-        // 先回显用户消息
         this.messages.push({ role: 'user', content: query });
         this.view.webview.postMessage({ type: 'update', messages: this.messages });
         this.view.webview.postMessage({ type: 'loading' });
 
-        const id = `req-${Date.now()}`;
-        const resp: KBResponse = await GoBridge.query(this.context, {
-          id,
-          type: 'query',
-          query,
-          history,
-        });
+        try {
+          const id = `req-${Date.now()}`;
+          const resp: KBResponse = await GoBridge.query(this.context, {
+            id,
+            type: 'query',
+            query,
+            history,
+          });
 
-        if (resp.type === 'error') {
-          this.messages.push({ role: 'assistant', content: resp.error || '查询失败', error: true });
-        } else if (resp.data) {
-          const d = resp.data;
-          const content = d.md_content || d.content || '未检索到相关内容';
+          if (resp.type === 'error') {
+            this.messages.push({
+              role: 'assistant',
+              content: resp.error || '查询失败',
+              error: true,
+            });
+          } else if (resp.data) {
+            const d = resp.data;
+            const content = d.md_content || d.content || '未检索到相关内容';
+            this.messages.push({
+              role: 'assistant',
+              content,
+              source: { doc_name: d.doc_name, score: d.score },
+            });
+          }
+        } catch (err: any) {
           this.messages.push({
             role: 'assistant',
-            content,
-            source: { doc_name: d.doc_name, score: d.score },
+            content: `查询异常: ${err?.message || String(err)}`,
+            error: true,
           });
         }
         this.view.webview.postMessage({ type: 'update', messages: this.messages });
@@ -88,7 +101,6 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
   }
 
   async openSettings() {
-    // 预留：后续接入 Trae 登录流程
     vscode.window.showInformationMessage(
       '配置功能预留：待 Trae 企业版鉴权方案确认后启用'
     );
@@ -113,7 +125,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} data: https:; font-src ${webview.cspSource} data:;">
   <title>知识库助手</title>
   <link rel="stylesheet" href="${styleUri}">
 </head>

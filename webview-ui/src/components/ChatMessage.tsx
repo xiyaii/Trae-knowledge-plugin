@@ -1,6 +1,6 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { ChatMessage } from '../App';
+import type { ChatMessage } from '../types';
 
 export function ChatMessageView({ msg }: { msg: ChatMessage }) {
   return (

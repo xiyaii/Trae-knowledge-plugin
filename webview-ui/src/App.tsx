@@ -2,13 +2,6 @@ import { useVsCode } from './hooks/useVsCode';
 import { ChatMessageView } from './components/ChatMessage';
 import { InputBox } from './components/InputBox';
 
-export interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  source?: { doc_name: string; score: number };
-  error?: boolean;
-}
-
 export default function App() {
   const { messages, loading, sendQuery, clearChat, openSettings } = useVsCode();
 
