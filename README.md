@@ -91,6 +91,6 @@ npm run build-all
 
 ## 待办
 
-- [ ] Trae 企业版鉴权：确认 OpenAPI 校验方式后实现 `VerifyAuth`
-- [ ] APIKey 内置：改为从安全配置服务拉取，而非环境变量硬注入
+- [x] Trae 企业版鉴权：读取本地 `storage.json` 校验 `identityStr`，Free 版本拒绝使用
+- [x] APIKey 内置：通过 Go 编译期 `ldflags -X` 注入，JS 层零密钥接触
 - [ ] 流式输出：启用 `KBRequest.stream`，扩展端增量渲染
