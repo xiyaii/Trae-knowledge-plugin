@@ -9,13 +9,14 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 )
 
 var KnowledgeBaseDomain = "api-knowledgebase.mlp.cn-beijing.volces.com" // 知识库域名
 var ServiceChatPath = "/api/knowledge/service/chat"                     // 支持知识服务的知识库检索接口
-var APIKey = ""                                                         // 编译期通过 -ldflags "-X main.APIKey=xxx" 注入；运行时可用 TRAE_KB_API_KEY 覆盖
+var APIKey = ""                                                         // 运行时由 builtInAPIKey 赋值（编译期 -ldflags "-X main.builtInAPIKey=xxx" 注入）
 var ServiceResourceID = "kb-service-39d7c93c630152d"                    // 您在平台上创建的知识服务ID
 
 // builtInAPIKey 由编译期 ldflags 注入，不对外暴露到 JS 层
@@ -244,6 +245,20 @@ func SelectBestResult(resp *ServiceChatResponse) (*CollectionSearchResponseItem,
 	return best, nil
 }
 
+// kbTagPattern 匹配知识库切片元信息标签，如 <KBDirectory>...</KBDirectory>、<KBDocName>...</KBDocName>
+var kbTagPattern = regexp.MustCompile(`(?m)^<KB[A-Za-z]+>[^<]*</KB[A-Za-z]+>\s*\n?`)
+
+// CleanContent 清理知识库原始切片内容中的元信息标签和多余空白
+// - 移除 <KBDirectory>、<KBDocName> 等标签行
+// - 去除首尾空白
+func CleanContent(content string) string {
+	if content == "" {
+		return content
+	}
+	cleaned := kbTagPattern.ReplaceAllString(content, "")
+	return strings.TrimSpace(cleaned)
+}
+
 // KnowledgeServiceChatStream 生成类型知识服务-流式返回（生成类型的知识服务流式返回使用该函数）
 func KnowledgeServiceChatStream(serviceChatReq *ServiceChatRequest) (err error) {
 	chatCompletionReqParamsBytes, _ := json.Marshal(serviceChatReq)
@@ -341,7 +356,11 @@ type ResultData struct {
 // TODO: 待确认 Trae 企业版 OpenAPI 鉴权方式后实现
 // 返回值: true=放行, false=拒绝
 func VerifyAuth(token string) bool {
-	// 当前阶段暂不校验，直接放行
+	// 安全加固：空 token 记警告（上线前必须改为 return false）
+	if token == "" {
+		fmt.Fprintln(os.Stderr, "WARN: 收到空 token 请求，当前处于未鉴权模式（开发期放行，上线前必须接入 Trae 企业版鉴权）")
+		return true
+	}
 	// 后续接入 Trae 企业版鉴权：
 	// 1. 用 token 调用 Trae OpenAPI 校验订阅状态
 	// 2. 校验通过返回 true，否则 false
@@ -394,6 +413,22 @@ func handleRequest(req KBRequest) {
 		return
 	}
 
+	// 相似度阈值校验：score < 0.2 视为完全无关，返回未命中提示
+	// 注：火山向量检索得分范围通常 0.2-0.5，0.5 阈值过于严格会误杀有效结果
+	// 检索质量主要由火山知识库后台的 embedding/rerank 配置控制，此处仅做兜底过滤
+	if best.Score < 0.2 {
+		emitResponse(KBResponse{
+			ID:   req.ID,
+			Type: "result",
+			Data: ResultData{
+				Count:   0,
+				Score:   best.Score,
+				Content: "知识库未检索到相关内容，请寻找Trae技术支持进行确认",
+			},
+		})
+		return
+	}
+
 	emitResponse(KBResponse{
 		ID:   req.ID,
 		Type: "result",
@@ -403,8 +438,8 @@ func handleRequest(req KBRequest) {
 			ChunkTitle:  best.ChunkTitle,
 			Score:       best.Score,
 			RerankScore: best.RerankScore,
-			Content:     best.Content,
-			MdContent:   best.MdContent,
+			Content:     CleanContent(best.Content),
+			MdContent:   CleanContent(best.MdContent),
 		},
 	})
 }

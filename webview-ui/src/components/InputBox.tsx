@@ -8,8 +8,9 @@ interface Props {
 export function InputBox({ onSend, disabled }: Props) {
   const [value, setValue] = useState('');
   const ref = useRef<HTMLTextAreaElement>(null);
+  // IME 合成状态：中文输入法选词期间为 true，避免 Enter 误发送
+  const composingRef = useRef(false);
 
-  // 自动调整高度
   useEffect(() => {
     if (ref.current) {
       ref.current.style.height = 'auto';
@@ -18,6 +19,8 @@ export function InputBox({ onSend, disabled }: Props) {
   }, [value]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // 合成期间（中文输入法选词）不处理 Enter
+    if (composingRef.current) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (value.trim() && !disabled) {
@@ -36,6 +39,8 @@ export function InputBox({ onSend, disabled }: Props) {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
+        onCompositionStart={() => { composingRef.current = true; }}
+        onCompositionEnd={() => { composingRef.current = false; }}
         rows={1}
       />
       <button

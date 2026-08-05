@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { GoBridge, KBResponse } from './goBridge';
-import { Secrets } from './secrets';
+import { Auth } from './auth';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -33,12 +32,50 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     webviewView.webview.onDidReceiveMessage((msg) =>
       this.handleMessage(msg)
     );
+
+    // 初始推送鉴权状态
+    this.pushAuthState();
+  }
+
+  /** 推送当前鉴权状态到 Webview */
+  private pushAuthState() {
+    if (!this.view) return;
+    this.view.webview.postMessage({
+      type: 'authState',
+      authenticated: Auth.isAuthenticated(),
+      result: Auth.getResult(),
+    });
   }
 
   private async handleMessage(msg: any) {
     if (!this.view) return;
     switch (msg.type) {
+      case 'login': {
+        const result = await Auth.verify();
+        this.pushAuthState();
+        if (!result.ok) {
+          vscode.window.showErrorMessage(result.reason || '鉴权失败');
+        } else {
+          vscode.window.showInformationMessage('Trae 企业版鉴权通过');
+        }
+        break;
+      }
       case 'query': {
+        // 鉴权拦截
+        if (!Auth.isAuthenticated()) {
+          const result = await Auth.verify();
+          this.pushAuthState();
+          if (!result.ok) {
+            this.messages.push({
+              role: 'assistant',
+              content: result.reason || '鉴权失败，请先登录 Trae 企业版账号',
+              error: true,
+            });
+            this.view.webview.postMessage({ type: 'update', messages: this.messages });
+            return;
+          }
+        }
+
         const query: string = msg.query;
         const maxHistory = vscode.workspace
           .getConfiguration('kbAssistant')
@@ -73,7 +110,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
             this.messages.push({
               role: 'assistant',
               content,
-              source: { doc_name: d.doc_name, score: d.score },
+              source: d.doc_name ? { doc_name: d.doc_name, score: d.score } : undefined,
             });
           }
         } catch (err: any) {

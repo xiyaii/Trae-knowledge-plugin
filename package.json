@@ -66,7 +66,7 @@
     "package": "webpack --mode production --devtool hidden-source-map",
     "compile-webview": "cd webview-ui && npm run build",
     "watch-webview": "cd webview-ui && npm run dev",
-    "build-go": "cd go-backend && GOOS=darwin GOARCH=arm64 go build -ldflags \"-X main.builtInAPIKey=$(cat ../.apikey 2>/dev/null || echo $TRAE_KB_API_KEY)\" -o ../bin/kb-server-darwin-arm64 .",
+    "build-go": "cd go-backend && GOOS=darwin GOARCH=arm64 go build -ldflags \"-X main.builtInAPIKey=$(cat ../.apikey)\" -o ../bin/kb-server-darwin-arm64 .",
     "build-all": "npm run build-go && npm run compile-webview && npm run package",
     "package-vsix": "vsce package"
   },

@@ -38,6 +38,7 @@ export class GoBridge {
   private static proc: ChildProcessWithoutNullStreams | undefined;
   private static pending = new Map<string, (resp: KBResponse) => void>();
   private static buffer = '';
+  private static cachedToken: string | undefined;
 
   private static getBinaryPath(extensionPath: string): string {
     const platform = process.platform;
@@ -118,8 +119,19 @@ export class GoBridge {
     req: KBRequest
   ): Promise<KBResponse> {
     await this.ensureProcess(context);
+    // 传递用户登录态给 Go 端用于鉴权（预留，当前 Go 端对空 token 仅记警告）
+    req.token = this.cachedToken;
     return new Promise((resolve) => {
-      this.pending.set(req.id, resolve);
+      const timeout = setTimeout(() => {
+        if (this.pending.has(req.id)) {
+          this.pending.delete(req.id);
+          resolve({ id: req.id, type: 'error', error: '请求超时（30s）' });
+        }
+      }, 30000);
+      this.pending.set(req.id, (resp: KBResponse) => {
+        clearTimeout(timeout);
+        resolve(resp);
+      });
       this.proc!.stdin.write(JSON.stringify(req) + '\n');
     });
   }

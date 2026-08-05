@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { ChatMessage } from '../types';
+import type { ChatMessage, AuthResult } from '../types';
 
 declare const acquireVsCodeApi: () => any;
 
 export function useVsCode() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [authResult, setAuthResult] = useState<AuthResult | null>(null);
+  const [authenticated, setAuthenticated] = useState(false);
   const vscodeRef = useRef<any>(null);
 
   useEffect(() => {
@@ -17,6 +19,9 @@ export function useVsCode() {
         setLoading(false);
       } else if (msg.type === 'loading') {
         setLoading(true);
+      } else if (msg.type === 'authState') {
+        setAuthenticated(msg.authenticated);
+        setAuthResult(msg.result);
       }
     };
     window.addEventListener('message', handler);
@@ -37,5 +42,18 @@ export function useVsCode() {
     vscodeRef.current?.postMessage({ type: 'openSettings' });
   }, []);
 
-  return { messages, loading, sendQuery, clearChat, openSettings };
+  const login = useCallback(() => {
+    vscodeRef.current?.postMessage({ type: 'login' });
+  }, []);
+
+  return {
+    messages,
+    loading,
+    sendQuery,
+    clearChat,
+    openSettings,
+    login,
+    authenticated,
+    authResult,
+  };
 }
