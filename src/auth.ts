@@ -10,15 +10,15 @@ import * as os from 'os';
  *
  * 校验逻辑：
  * - 读取 iCubeServerData://icube.cloudide 字段（值为 JSON 字符串）
- * - 解析后查找 identityStr 字段
- * - 若 identityStr === "Free" 则拒绝（未购买企业版）
- * - 否则允许（含字段不存在的情况，企业版用户无此字段）
+ * - 解析后查找 productType 字段
+ * - 若存在 productType 则登录成功（已购买企业版）
+ * - 若不存在则登录失败
  */
 
 export interface AuthResult {
   ok: boolean;
   reason?: string;
-  identityStr?: string;
+  productType?: string;
 }
 
 export class Auth {
@@ -48,7 +48,7 @@ export class Auth {
     return path.join(base, 'Trae CN', 'User', 'globalStorage', 'storage.json');
   }
 
-  /** 执行鉴权：读取 storage.json 并校验 identityStr */
+  /** 执行鉴权：读取 storage.json 并校验 productType */
   static async verify(): Promise<AuthResult> {
     const storagePath = this.getStoragePath();
 
@@ -111,37 +111,36 @@ export class Auth {
       return this.result;
     }
 
-    // 递归查找 identityStr 字段
-    const identityStr = this.findIdentityStr(serverData);
+    // 递归查找 productType 字段
+    const productType = this.findProductType(serverData);
 
-    if (identityStr === 'Free') {
+    if (!productType) {
       this.result = {
         ok: false,
-        reason: '当前账号为 Free 版本，未购买 Trae 企业版，无法使用知识库助手插件',
-        identityStr,
+        reason: '当前账号未购买 Trae 企业版，无法使用知识库助手插件',
       };
       this.authenticated = false;
       return this.result;
     }
 
-    // 企业版用户（identityStr 不存在或非 Free）
+    // 存在 productType，登录成功
     this.result = {
       ok: true,
-      identityStr,
+      productType,
     };
     this.authenticated = true;
     return this.result;
   }
 
-  /** 递归查找对象中的 identityStr 字段 */
-  private static findIdentityStr(obj: any): string | undefined {
+  /** 递归查找对象中的 productType 字段 */
+  private static findProductType(obj: any): string | undefined {
     if (obj === null || obj === undefined) return undefined;
     if (typeof obj === 'object') {
-      if (obj.identityStr !== undefined && typeof obj.identityStr === 'string') {
-        return obj.identityStr;
+      if (obj.productType !== undefined && typeof obj.productType === 'string') {
+        return obj.productType;
       }
       for (const key of Object.keys(obj)) {
-        const result = this.findIdentityStr(obj[key]);
+        const result = this.findProductType(obj[key]);
         if (result !== undefined) return result;
       }
     }
