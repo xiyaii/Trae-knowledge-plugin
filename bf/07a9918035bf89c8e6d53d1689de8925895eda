@@ -1,0 +1,88 @@
+src/goBridge.ts
+  s_72075552956f7b::t_a09ecdb438b069 125-134
+  s_72075552956f7b::t_5546e105913248 41
+  s_72075552956f7b::t_63610899f6cb05 122-123
+package.json
+  s_72075552956f7b::t_e310ba9387e05b 69
+webview-ui/src/App.tsx
+  s_96f14d8f830607::t_7df82a96008858 6-15,17-41
+webview-ui/src/components/InputBox.tsx
+  s_96f14d8f830607::t_1f77a84b0e1ae8 11-12,22-23,42-43
+src/auth.ts
+  s_96f14d8f830607::t_d34df9d55087ce 1-155
+go-backend/TraeCN_tob_knowledge.go
+  s_96f14d8f830607::t_2e3ee800b080ca 248-259
+  s_96f14d8f830607::t_987ec3478450cf 420-431
+  s_72075552956f7b::t_8f117f1166500f 359,361-362
+  s_96f14d8f830607::t_7c691aab28c40c 441-442
+  s_72075552956f7b::t_3e64cb68c55c52 19
+  s_72075552956f7b::t_0d7fc80271a220 360,363
+  s_96f14d8f830607::t_a8c2dce381bbed 416-419
+  s_96f14d8f830607::t_b25820fc842a3d 261
+  s_96f14d8f830607::t_dcd4d42f900bcb 260
+webview-ui/src/types.ts
+  s_96f14d8f830607::t_d4c952b9ad01e5 7-12
+src/webviewProvider.ts
+  s_96f14d8f830607::t_191a2fdca17a1c 3,35-47,53-62,64-78,113
+webview-ui/src/hooks/useVsCode.ts
+  s_96f14d8f830607::t_cf034303169cb0 2,9-10,22-24,45-58
+.gitignore
+  s_72075552956f7b::t_592f44930a6519 5
+webview-ui/src/index.css
+  s_96f14d8f830607::t_a1eb57912b9937 241-298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "bf07a9918035bf89c8e6d53d1689de8925895eda",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_72075552956f7b": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a71a97337546dab0526cf87",
+        "model": "glm-5.2"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "tool_use_id": "6a71d0b485e19654d435c02b",
+        "operation_id": "6a71d0b485e19654d435c02b",
+        "tool_type": "builtin",
+        "session_id": "6a71a97337546dab0526cf87",
+        "runtime_client": "trae-tob-git-ai",
+        "source_scene": "agent",
+        "edit_kind": "file_edit",
+        "client_type": "ide",
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "external_session_id": "6a71a97337546dab0526cf87",
+        "dedupe_key": "6a71a97337546dab0526cf87:6a71d0b485e19654d435c02b:afterEdit:bb390560"
+      }
+    },
+    "s_96f14d8f830607": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a71899037546dab0526cf24",
+        "model": "glm-5.2"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "client_type": "ide",
+        "session_id": "6a71899037546dab0526cf24",
+        "external_session_id": "6a71899037546dab0526cf24",
+        "dedupe_key": "6a71899037546dab0526cf24:6a72bb2101a46e26efdcce52:afterEdit:fdb40e31",
+        "runtime_client": "trae-tob-git-ai",
+        "tool_use_id": "6a72bb2101a46e26efdcce52",
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "operation_id": "6a72bb2101a46e26efdcce52",
+        "tool_type": "builtin",
+        "edit_kind": "file_edit",
+        "source_scene": "agent"
+      }
+    }
+  }
+}
