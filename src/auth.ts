@@ -19,6 +19,7 @@ export interface AuthResult {
   ok: boolean;
   reason?: string;
   productType?: unknown;
+  productType?: string;
 }
 
 export class Auth {
@@ -126,6 +127,8 @@ export class Auth {
     // 存在 productType，登录成功
     this.result = {
       ok: true,
+
+      productType,
     };
     this.authenticated = true;
     return this.result;
@@ -140,6 +143,15 @@ export class Auth {
       }
       for (const key of Object.keys(obj)) {
         if (this.findProductType(obj[key])) return true;
+  private static findProductType(obj: any): string | undefined {
+    if (obj === null || obj === undefined) return undefined;
+    if (typeof obj === 'object') {
+      if (obj.productType !== undefined && typeof obj.productType === 'string') {
+        return obj.productType;
+      }
+      for (const key of Object.keys(obj)) {
+        const result = this.findProductType(obj[key]);
+        if (result !== undefined) return result;
       }
     }
     return false;
