@@ -10,16 +10,28 @@
 - **安全无感**：APIKey 编译期内置，用户无需配置，密钥不暴露
 - **中文输入友好**：正确处理 IME 输入法合成期，避免 Enter 误发送
 - **内容清洗**：自动去除知识库切片元信息标签，仅展示问题表现和解决方案
+- **埋点上报**：install / login_success / query 事件异步上报到运营服务端，不影响主流程
+- **运营看板**：独立 admin-service 提供 DAU、问答次数、平均得分、低分问答列表等指标可视化
 
 ## 工程结构
 
 ```
 Trae_Plugin/
-├── go-backend/              # Go 后端（JSON Lines 协议）
-│   ├── TraeCN_tob_knowledge.go   # 知识库 API 调用 + 检索逻辑
+├── go-backend/              # Go 后端（JSON Lines 协议，随 VSIX 分发）
+│   ├── TraeCN_tob_knowledge.go   # 知识库 API 调用 + 检索逻辑 + 埋点转发
 │   └── go.mod
+├── admin-service/           # 运营服务端（独立部署，连 PostgreSQL）
+│   ├── main.go              # HTTP 服务入口 /track + /dashboard/*
+│   ├── handler.go           # 埋点上报接口（X-Track-Token 鉴权）
+│   ├── dashboard.go         # 看板 API（overview/daily/top-docs/low-score）
+│   ├── dashboard_embed.go   # go:embed 静态前端
+│   ├── store.go             # pgx 数据访问 + 每日聚合
+│   ├── config.go            # 环境变量配置
+│   ├── admin.service        # systemd unit 模板
+│   ├── dashboard-ui/        # 运营看板前端（React + Vite）
+│   └── static/              # 构建产物（go:embed 打包）
 ├── src/                     # 扩展端（TypeScript）
-│   ├── extension.ts         # 激活入口，注册视图和命令
+│   ├── extension.ts         # 激活入口，注册视图和命令 + install 埋点
 │   ├── webviewProvider.ts   # Webview 管理与消息分发
 │   ├── goBridge.ts          # Go 子进程管理 + JSON Lines 通信
 │   ├── auth.ts              # 企业版登录鉴权（读取 storage.json）
@@ -45,12 +57,24 @@ Trae_Plugin/
 
 ```
 Webview (React) ──postMessage──► Extension Host ──JSON Lines──► Go 后端 ──HTTPS──► 火山引擎知识库
-     │                                │
+     │                                │                       │
      │                                ├─ auth.ts: 读取 storage.json 校验 productType
      │                                └─ goBridge.ts: 管理子进程生命周期
-     │
-     └─ IME 合成状态管理，避免输入法选词时 Enter 误发送
+     │                                                        │
+     │                                                        └─ 异步 HTTP POST /track
+     │                                                              (2s 超时, 失败静默)
+     │                                                                   │
+     │                                                                   ▼
+     │                                                        ┌───────────────────────┐
+     │                                                        │ admin-service (独立部署) │
+     │                                                        │  /track → PostgreSQL    │
+     │                                                        │  /dashboard/* (BasicAuth) │
+     │                                                        └───────────────────────┘
+     │                                                                   │
+     └─ IME 合成状态管理，避免输入法选词时 Enter 误发送                 └─ go:embed 静态前端
 ```
+
+埋点链路为两段式：plugin 不直接访问 admin-service，而是发到本地 go-backend（type:'track'），由 go-backend 携带编译期内置的 `trackEndpoint`/`trackToken` 转发到运营服务端。query 事件由 go-backend 自身生成（携带 score/doc_name 等检索结果）。
 
 ### APIKey 安全方案
 
@@ -60,6 +84,39 @@ APIKey 通过 Go 编译期 `ldflags -X main.builtInAPIKey` 注入，嵌入在二
 - 编译时读取并注入：`go build -ldflags "-X main.builtInAPIKey=$(cat ../.apikey)"`
 - 运行时优先使用环境变量 `TRAE_KB_API_KEY`，其次使用编译期内置值
 - JS 层完全不接触密钥，用户无感知
+
+### 埋点与运营看板（admin-service）
+
+`admin-service` 与 `go-backend` 完全解耦：独立 `go.mod`、独立部署（systemd）、独立连 PostgreSQL。两者唯一耦合是 go-backend 编译期内置的 `trackEndpoint` URL。
+
+**埋点事件**（go-backend 异步 POST 到 `/track`，`X-Track-Token` 鉴权）：
+
+| Event | 触发点 | 关键字段 |
+|---|---|---|
+| `install` | 扩展首次激活（`extension.ts` globalState 去重） | `machine_id`、`platform`、`plugin_ver` |
+| `login_success` | 用户点击"验证企业版订阅"且通过（`webviewProvider.ts`） | `user_id`（iCubeAuthInfo://usertag）、`machine_id` |
+| `query` | go-backend 完成知识库检索后自行生成（含低分命中） | `user_id`、`query`、`score`、`doc_name`、`msg_id` |
+
+**Dashboard 接口**（`/dashboard/*`，BasicAuth 鉴权，建议走内网/VPN）：
+
+| Path | 说明 |
+|---|---|
+| `/dashboard/overview?from=&to=` | 累计激活/登录数、区间问答次数、今日 DAU、平均得分、低分占比 |
+| `/dashboard/daily?from=&to=` | 按日聚合的 install/login/query/DAU 趋势 |
+| `/dashboard/top-docs?from=&to=&limit=10` | 命中频次 Top 文档 |
+| `/dashboard/low-score?from=&to=&limit=20` | score < 0.3 的低分问答列表，供人工补充知识库 |
+| `/` | go:embed 打包的 React 静态前端 |
+
+**配置注入**（systemd Environment）：
+
+| 变量 | 用途 |
+|---|---|
+| `PORT` | HTTP 监听端口（默认 8080） |
+| `DB_DSN` | PostgreSQL 连接串 |
+| `TRACK_TOKEN` | `/track` 接口鉴权 token，需与 go-backend 编译期注入值一致 |
+| `DASHBOARD_USER` / `DASHBOARD_PASS` | BasicAuth 账号密码 |
+
+`/track` 接口公开（仅 token 鉴权），`/dashboard/*` 走 BasicAuth，根路径前端同样受 BasicAuth 保护。
 
 ### 登录鉴权
 
@@ -157,5 +214,8 @@ Trae IDE → 扩展面板 → 更多操作 → 从 VSIX 安装 → 选择生成�
 - [x] IME 输入法修复：合成期 Enter 不触发发送
 - [x] 内容清洗：去除 `KBDirectory`/`KBDocName` 等切片元信息
 - [x] 检索阈值：score < 0.2 视为未命中
+- [x] 埋点上报：install / login_success / query 三类事件，go-backend 异步转发到 admin-service
+- [x] 运营看板：admin-service 提供 overview/daily/top-docs/low-score API + React 静态前端
 - [ ] 流式输出：启用 `KBRequest.stream`，扩展端增量渲染
 - [ ] 多平台二进制：按 OS/ARCH 自动选择对应编译产物
+- [ ] 服务端鉴权：go-backend `VerifyAuth` 当前为桩实现（空 token 也放行），上线前需接入 Trae 企业版 OpenAPI
