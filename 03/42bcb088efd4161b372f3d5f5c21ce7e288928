@@ -1,0 +1,91 @@
+src/extension.ts
+  s_96cc76cb78c83f::t_8b8904e9ce0b69 4,10-22
+  s_96cc76cb78c83f::t_d24c9d1fff98f3 23
+admin-service/dashboard-ui/src/index.css
+  s_96cc76cb78c83f::t_a5f2e2798ea398 1-217
+admin-service/dashboard_embed.go
+  s_96cc76cb78c83f::t_7c2393307441fd 1-48
+admin-service/dashboard-ui/src/api.ts
+  s_96cc76cb78c83f::t_7642c3213dbd6d 1-56
+admin-service/dashboard-ui/tsconfig.json
+  s_96cc76cb78c83f::t_5a56e793123b5e 1-20
+admin-service/dashboard-ui/index.html
+  s_96cc76cb78c83f::t_59607d2d65c599 1-12
+admin-service/dashboard.go
+  s_96cc76cb78c83f::t_34dea8dc0ccc71 1-215
+src/webviewProvider.ts
+  s_96cc76cb78c83f::t_652ce47ed42069 110-113
+  s_96cc76cb78c83f::t_1832869a9b2f32 61-70
+  s_96cc76cb78c83f::t_f08a351fbd3db8 4
+admin-service/config.go
+  s_96cc76cb78c83f::t_dfcc3cbdb3dd33 1-44
+admin-service/dashboard-ui/vite.config.ts
+  s_96cc76cb78c83f::t_e5c929431a3c2a 1-20
+admin-service/dashboard-ui/src/App.tsx
+  s_96cc76cb78c83f::t_f50dd5cd5078c7 1-233
+admin-service/main.go
+  s_96cc76cb78c83f::t_b27f7e7b7b272c 48-50
+  s_96cc76cb78c83f::t_baddb26f22eeae 1-47,51-77
+admin-service/dashboard-ui/.gitignore
+  s_96cc76cb78c83f::t_4e2ab1872d6614 1-2
+src/auth.ts
+  s_96cc76cb78c83f::t_d090edc77b96e6 137-140
+  s_96cc76cb78c83f::t_99b17251d311b2 27
+  s_96cc76cb78c83f::t_166c6b5754a162 158-170,174
+  s_96cc76cb78c83f::t_2b6a79476ba5ee 37-41
+admin-service/store.go
+  s_96cc76cb78c83f::t_745d7103ec8d0a 1-142
+src/goBridge.ts
+  s_96cc76cb78c83f::t_77f14e8e7792a3 9-11,14-17
+admin-service/dashboard-ui/package.json
+  s_96cc76cb78c83f::t_e00ba2fe322961 1-22
+admin-service/go.mod
+  s_96cc76cb78c83f::t_9644907efae9d0 1-3
+  s_96cc76cb78c83f::t_0bc154b8467043 4-6
+admin-service/handler.go
+  s_96cc76cb78c83f::t_7f87f3dd912596 1-51
+admin-service/admin.service
+  s_96cc76cb78c83f::t_d8560bf9a94f86 10
+  s_96cc76cb78c83f::t_1924e54b58f379 1-9,11-19
+admin-service/dashboard-ui/src/main.tsx
+  s_96cc76cb78c83f::t_d1add6fc6a8079 1-10
+.gitignore
+  s_96cc76cb78c83f::t_ad066b09ce07a3 9-10
+go-backend/TraeCN_tob_knowledge.go
+  s_96cc76cb78c83f::t_a3b474cd9988bd 25-29
+  s_96cc76cb78c83f::t_8daa8c673afade 386-427
+  s_96cc76cb78c83f::t_fff4296334eaad 333-343
+  s_96cc76cb78c83f::t_2b9e24070fc87f 430-445,488-499,512-524
+  s_96cc76cb78c83f::t_54b9216a70e39c 525
+package.json
+  s_96cc76cb78c83f::t_928e8badaa8c87 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "0342bcb088efd4161b372f3d5f5c21ce7e288928",
+  "prompts": {},
+  "sessions": {
+    "s_96cc76cb78c83f": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a740df90dc0a6620579e4dd",
+        "model": "glm-5.2"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "tool_use_id": "6a7456880dc0a6620579e5dc",
+        "external_session_id": "6a740df90dc0a6620579e4dd",
+        "operation_id": "6a7456880dc0a6620579e5dc",
+        "session_id": "6a740df90dc0a6620579e4dd",
+        "runtime_client": "trae-tob-git-ai",
+        "edit_kind": "file_edit",
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "source_scene": "agent",
+        "tool_type": "builtin",
+        "dedupe_key": "6a740df90dc0a6620579e4dd:6a7456880dc0a6620579e5dc:afterEdit:91d4dccb",
+        "client_type": "ide"
+      }
+    }
+  }
+}
