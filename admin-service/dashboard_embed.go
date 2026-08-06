@@ -15,12 +15,14 @@ var staticFiles embed.FS
 // Dashboard 需要登录态（BasicAuth），与 /dashboard/* API 共享同一组凭据
 func (app *App) registerDashboard(mux *http.ServeMux) {
 	staticFS, _ := fs.Sub(staticFiles, "static")
-
 	fileServer := http.FileServer(http.FS(staticFS))
 
-	// 包装：访问根路径返回 index.html
+	// 预读 index.html 内容，用于根路径和 SPA fallback
+	// 避免 http.FileServer 遇到 /index.html 时 301 重定向到 / 导致死循环
+	indexHTML, _ := fs.ReadFile(staticFS, "index.html")
+
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// 如果请求的是 API 路径，交给其他 handler
+		// API 路径不在此处理
 		if strings.HasPrefix(r.URL.Path, "/track") ||
 			strings.HasPrefix(r.URL.Path, "/dashboard/") ||
 			r.URL.Path == "/health" {
@@ -28,18 +30,25 @@ func (app *App) registerDashboard(mux *http.ServeMux) {
 			return
 		}
 
-		// 根路径或不存在文件时，返回 index.html（支持前端路由）
+		// 根路径：直接返回 index.html 内容，不走 FileServer（避免重定向循环）
 		if r.URL.Path == "/" {
-			r.URL.Path = "/index.html"
-		} else {
-			// 检查文件是否存在，不存在则返回 index.html（SPA fallback）
-			f, err := staticFS.Open(strings.TrimPrefix(r.URL.Path, "/"))
-			if err != nil {
-				r.URL.Path = "/index.html"
-			} else {
-				f.Close()
-			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(indexHTML)
+			return
 		}
+
+		// 检查静态文件是否存在
+		filePath := strings.TrimPrefix(r.URL.Path, "/")
+		f, err := staticFS.Open(filePath)
+		if err != nil {
+			// 文件不存在，返回 index.html（SPA fallback）
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(indexHTML)
+			return
+		}
+		f.Close()
+
+		// 文件存在，交给 FileServer 处理
 		fileServer.ServeHTTP(w, r)
 	})
 
