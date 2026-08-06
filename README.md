@@ -73,6 +73,7 @@ APIKey 通过 Go 编译期 `ldflags -X main.builtInAPIKey` 注入，嵌入在二
 
 `productType` 位于 `saasEntitlementInfo.productType`，值为数字类型（如 `231`），只要存在即视为企业版用户。
 
+
 storage.json 路径：
 - macOS: `~/Library/Application Support/Trae CN/User/globalStorage/storage.json`
 - Windows: `%APPDATA%/Trae CN/User/globalStorage/storage.json`
