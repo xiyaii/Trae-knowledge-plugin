@@ -6,10 +6,15 @@ import { Secrets } from './secrets';
 
 export interface KBRequest {
   id: string;
-  type: string;
-  query: string;
+  type: string;               // 'query' | 'track'
+  event?: string;             // 'install' | 'login_success' | 'query'
+  query?: string;
   history?: Array<{ role: string; content: string }>;
   token?: string;
+  user_id?: string;           // iCubeAuthInfo://usertag 的值
+  machine_id?: string;        // vscode.env.machineId
+  platform?: string;          // darwin-arm64 / win32-x64
+  plugin_ver?: string;        // 插件版本
 }
 
 export interface KBResultData {

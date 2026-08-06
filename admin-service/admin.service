@@ -1,0 +1,19 @@
+[Unit]
+Description=Trae KB Plugin Admin Service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/admin-service
+Environment=PORT=8080
+Environment=DB_DSN=postgres://user:pass@postgres1b76fb9b02f4.rds-pg.ivolces.com:5432/dbname?sslmode=disable
+Environment=TRACK_TOKEN=your-track-token
+Environment=DASHBOARD_USER=admin
+Environment=DASHBOARD_PASS=your-dashboard-password
+ExecStart=/opt/admin-service/admin-service
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

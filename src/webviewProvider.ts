@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { GoBridge, KBResponse } from './goBridge';
 import { Auth } from './auth';
+import * as os from 'os';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -57,6 +58,16 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
           vscode.window.showErrorMessage(result.reason || '鉴权失败');
         } else {
           vscode.window.showInformationMessage('Trae 企业版鉴权通过');
+          // 登录成功上报（fire-and-forget）
+          GoBridge.query(this.context, {
+            id: `track-login-${Date.now()}`,
+            type: 'track',
+            event: 'login_success',
+            user_id: Auth.getUsertag() || undefined,
+            machine_id: vscode.env.machineId,
+            platform: `${process.platform}-${process.arch}`,
+            plugin_ver: (this.context.extension.packageJSON as any)?.version || 'unknown',
+          }).catch(() => {});
         }
         break;
       }
@@ -96,6 +107,10 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
             type: 'query',
             query,
             history,
+            user_id: Auth.getUsertag() || undefined,
+            machine_id: vscode.env.machineId,
+            platform: `${process.platform}-${process.arch}`,
+            plugin_ver: (this.context.extension.packageJSON as any)?.version || 'unknown',
           });
 
           if (resp.type === 'error') {

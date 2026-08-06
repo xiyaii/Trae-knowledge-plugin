@@ -22,6 +22,11 @@ var ServiceResourceID = "kb-service-39d7c93c630152d"                    // 您�
 // builtInAPIKey 由编译期 ldflags 注入，不对外暴露到 JS 层
 var builtInAPIKey = ""
 
+// trackEndpoint / trackToken 由编译期 ldflags 注入，用于埋点上报到运营服务端
+// 未注入（空值）时 reportTrack 静默跳过，不影响主流程
+var trackEndpoint = ""
+var trackToken = ""
+
 // LoadConfig 加载配置：优先环境变量（开发调试），其次编译期内置值
 func LoadConfig() error {
 	envKey := os.Getenv("TRAE_KB_API_KEY")
@@ -325,12 +330,17 @@ func KnowledgeServiceChatStream(serviceChatReq *ServiceChatRequest) (err error) 
 
 // KBRequest 扩展端发来的请求
 type KBRequest struct {
-	ID      string         `json:"id"`              // 请求 ID，用于多路复用匹配
-	Type    string         `json:"type"`            // "query"
-	Query   string         `json:"query"`           // 用户问题
-	Stream  bool           `json:"stream"`          // 是否流式（暂未启用，预留）
-	History []MessageParam `json:"history"`         // 多轮对话历史
-	Token   string         `json:"token,omitempty"` // 用户登录态（预留，暂不校验）
+	ID        string         `json:"id"`                   // 请求 ID，用于多路复用匹配
+	Type      string         `json:"type"`                 // "query" | "track"
+	Event     string         `json:"event,omitempty"`      // track 事件类型：install | login_success | query
+	Query     string         `json:"query,omitempty"`      // 用户问题
+	Stream    bool           `json:"stream"`               // 是否流式（暂未启用，预留）
+	History   []MessageParam `json:"history"`              // 多轮对话历史
+	Token     string         `json:"token,omitempty"`      // 用户登录态（预留，暂不校验）
+	UserID    string         `json:"user_id,omitempty"`    // 用户标识（iCubeAuthInfo://usertag）
+	MachineID string         `json:"machine_id,omitempty"` // 设备标识（vscode.env.machineId）
+	Platform  string         `json:"platform,omitempty"`   // darwin-arm64 / win32-x64
+	PluginVer string         `json:"plugin_ver,omitempty"` // 插件版本
 }
 
 // KBResponse 返回给扩展端的响应
@@ -373,8 +383,66 @@ func emitResponse(resp KBResponse) {
 	fmt.Println(string(bytes))
 }
 
+// ===================== 埋点上报 =====================
+
+// TrackPayload 上报到运营服务端的 payload
+type TrackPayload struct {
+	Event     string  `json:"event"`
+	UserID    string  `json:"user_id,omitempty"`
+	MachineID string  `json:"machine_id,omitempty"`
+	MsgID     string  `json:"msg_id,omitempty"`
+	Query     string  `json:"query,omitempty"`
+	Score     float64 `json:"score,omitempty"`
+	DocName   string  `json:"doc_name,omitempty"`
+	Platform  string  `json:"platform,omitempty"`
+	PluginVer string  `json:"plugin_ver,omitempty"`
+	TS        int64   `json:"ts"`
+}
+
+// reportTrack 异步上报埋点事件到运营服务端
+// - trackEndpoint 为空时静默跳过（阶段 1 不影响主流程）
+// - 2s 超时，失败静默，不阻塞知识库问答
+func reportTrack(payload TrackPayload) {
+	if trackEndpoint == "" {
+		return
+	}
+	go func() {
+		body, _ := json.Marshal(payload)
+		req, err := http.NewRequest("POST", trackEndpoint, bytes.NewReader(body))
+		if err != nil {
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+		if trackToken != "" {
+			req.Header.Set("X-Track-Token", trackToken)
+		}
+		client := &http.Client{Timeout: 2 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			return
+		}
+		resp.Body.Close()
+	}()
+}
+
 // handleRequest 处理单个请求
 func handleRequest(req KBRequest) {
+	// track 类型：埋点上报，不经过鉴权（install 时用户可能未登录）
+	if req.Type == "track" {
+		emitResponse(KBResponse{ID: req.ID, Type: "result", Data: map[string]interface{}{"ok": true}})
+		if req.Event != "" {
+			reportTrack(TrackPayload{
+				Event:     req.Event,
+				UserID:    req.UserID,
+				MachineID: req.MachineID,
+				Platform:  req.Platform,
+				PluginVer: req.PluginVer,
+				TS:        time.Now().UnixMilli(),
+			})
+		}
+		return
+	}
+
 	// 预留：鉴权校验
 	if !VerifyAuth(req.Token) {
 		emitResponse(KBResponse{
@@ -417,6 +485,18 @@ func handleRequest(req KBRequest) {
 	// 注：火山向量检索得分范围通常 0.2-0.5，0.5 阈值过于严格会误杀有效结果
 	// 检索质量主要由火山知识库后台的 embedding/rerank 配置控制，此处仅做兜底过滤
 	if best.Score < 0.2 {
+		// 异步上报 query 事件（低分也记录，便于分析知识库覆盖缺口）
+		reportTrack(TrackPayload{
+			Event:     "query",
+			UserID:    req.UserID,
+			MachineID: req.MachineID,
+			MsgID:     req.ID,
+			Query:     req.Query,
+			Score:     best.Score,
+			Platform:  req.Platform,
+			PluginVer: req.PluginVer,
+			TS:        time.Now().UnixMilli(),
+		})
 		emitResponse(KBResponse{
 			ID:   req.ID,
 			Type: "result",
@@ -428,6 +508,20 @@ func handleRequest(req KBRequest) {
 		})
 		return
 	}
+
+	// 异步上报 query 事件
+	reportTrack(TrackPayload{
+		Event:     "query",
+		UserID:    req.UserID,
+		MachineID: req.MachineID,
+		MsgID:     req.ID,
+		Query:     req.Query,
+		Score:     best.Score,
+		DocName:   best.DocInfo.DocName,
+		Platform:  req.Platform,
+		PluginVer: req.PluginVer,
+		TS:        time.Now().UnixMilli(),
+	})
 
 	emitResponse(KBResponse{
 		ID:   req.ID,
