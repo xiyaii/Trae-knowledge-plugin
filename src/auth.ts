@@ -147,8 +147,9 @@ export class Auth {
   private static findProductType(obj: any): string | undefined {
     if (obj === null || obj === undefined) return undefined;
     if (typeof obj === 'object') {
-      if (obj.productType !== undefined && typeof obj.productType === 'string') {
-        return obj.productType;
+      // productType 可能为字符串或数字（如企业版订阅返回 231），统一转为字符串
+      if (obj.productType !== undefined && (typeof obj.productType === 'string' || typeof obj.productType === 'number')) {
+        return String(obj.productType);
       }
       for (const key of Object.keys(obj)) {
         const result = this.findProductType(obj[key]);
