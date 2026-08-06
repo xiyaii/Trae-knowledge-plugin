@@ -4,6 +4,7 @@ import (
 	"embed"
 	"io/fs"
 	"net/http"
+	"path"
 	"strings"
 )
 
@@ -11,14 +12,10 @@ import (
 var staticFiles embed.FS
 
 // registerDashboard 注册 Dashboard 前端路由
-// 访问 / 时返回 index.html，其他静态资源走 /assets/*
-// Dashboard 需要登录态（BasicAuth），与 /dashboard/* API 共享同一组凭据
+// 完全不用 http.FileServer（它对 /index.html 有 301 重定向行为）
+// 直接用 fs.ReadFile + http.ServeContent 手动处理
 func (app *App) registerDashboard(mux *http.ServeMux) {
 	staticFS, _ := fs.Sub(staticFiles, "static")
-	fileServer := http.FileServer(http.FS(staticFS))
-
-	// 预读 index.html 内容，用于根路径和 SPA fallback
-	// 避免 http.FileServer 遇到 /index.html 时 301 重定向到 / 导致死循环
 	indexHTML, _ := fs.ReadFile(staticFS, "index.html")
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -30,28 +27,49 @@ func (app *App) registerDashboard(mux *http.ServeMux) {
 			return
 		}
 
-		// 根路径：直接返回 index.html 内容，不走 FileServer（避免重定向循环）
-		if r.URL.Path == "/" {
+		// 根路径或路径为 /index.html：返回 index.html
+		if r.URL.Path == "/" || r.URL.Path == "/index.html" {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(indexHTML)
 			return
 		}
 
-		// 检查静态文件是否存在
+		// 尝试读取静态文件（去掉前导 /）
 		filePath := strings.TrimPrefix(r.URL.Path, "/")
-		f, err := staticFS.Open(filePath)
+		data, err := fs.ReadFile(staticFS, filePath)
 		if err != nil {
 			// 文件不存在，返回 index.html（SPA fallback）
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Write(indexHTML)
 			return
 		}
-		f.Close()
 
-		// 文件存在，交给 FileServer 处理
-		fileServer.ServeHTTP(w, r)
+		// 根据扩展名设置 Content-Type
+		ext := path.Ext(filePath)
+		switch ext {
+		case ".js":
+			w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		case ".css":
+			w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		case ".html":
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		case ".svg":
+			w.Header().Set("Content-Type", "image/svg+xml")
+		case ".png":
+			w.Header().Set("Content-Type", "image/png")
+		case ".ico":
+			w.Header().Set("Content-Type", "image/x-icon")
+		case ".json":
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		case ".woff", ".woff2":
+			w.Header().Set("Content-Type", "font/"+ext[1:])
+		default:
+			w.Header().Set("Content-Type", "application/octet-stream")
+		}
+
+		w.Write(data)
 	})
 
-	// Dashboard 页面也走 BasicAuth 保护
+	// Dashboard 页面走 BasicAuth 保护
 	mux.Handle("/", BasicAuth(app.cfg.DashboardUser, app.cfg.DashboardPass, handler))
 }
