@@ -8,3 +8,4 @@ bin/
 .apikey
 .track_endpoint
 .track_token
+admin-service/admin-service

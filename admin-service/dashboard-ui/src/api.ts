@@ -31,13 +31,12 @@ export interface LowScoreItem {
   ts: number;
 }
 
-// 请求封装：带 BasicAuth
-const USERNAME = localStorage.getItem('dash_user') || 'admin';
-const PASSWORD = localStorage.getItem('dash_pass') || '';
-const AUTH = 'Basic ' + btoa(`${USERNAME}:${PASSWORD}`);
-
+// 请求封装：使用浏览器原生 BasicAuth 弹窗
 async function fetchJSON<T>(url: string): Promise<T> {
-  const resp = await fetch(url, { headers: { Authorization: AUTH } });
+  const resp = await fetch(url, { credentials: 'include' });
+  if (resp.status === 401) {
+    throw new Error('Unauthorized');
+  }
   if (!resp.ok) {
     throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
   }
