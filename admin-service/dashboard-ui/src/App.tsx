@@ -200,7 +200,6 @@ export default function App() {
                 <thead>
                   <tr>
                     <th>时间</th>
-                    <th>用户</th>
                     <th>问题</th>
                     <th>得分</th>
                     <th>命中文档</th>
@@ -210,9 +209,6 @@ export default function App() {
                   {lowScore.map((d, i) => (
                     <tr key={i}>
                       <td>{formatTs(d.ts)}</td>
-                      <td style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {d.user_id || '-'}
-                      </td>
                       <td style={{ maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {d.query}
                       </td>

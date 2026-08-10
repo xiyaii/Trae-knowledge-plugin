@@ -9,11 +9,11 @@ import (
 
 // OverviewResp 总览响应
 type OverviewResp struct {
-	InstallCount int64   `json:"install_count"` // 累计激活设备数
-	LoginCount   int64   `json:"login_count"`   // 累计登录用户数
-	QueryCount   int64   `json:"query_count"`   // 累计问答次数
-	DAU          int64   `json:"dau"`           // 今日活跃用户数
-	AvgScore     float64 `json:"avg_score"`     // 平均检索得分
+	InstallCount int64   `json:"install_count"`  // 累计激活设备数
+	LoginCount   int64   `json:"login_count"`    // 累计登录用户数
+	QueryCount   int64   `json:"query_count"`    // 累计问答次数
+	DAU          int64   `json:"dau"`            // 今日活跃用户数
+	AvgScore     float64 `json:"avg_score"`      // 平均检索得分
 	LowScoreRate float64 `json:"low_score_rate"` // 低分占比（score < 0.3）
 }
 
@@ -52,11 +52,11 @@ func (app *App) HandleOverview(w http.ResponseWriter, r *http.Request) {
 
 // DailyItem 日趋势单项
 type DailyItem struct {
-	Date        string `json:"date"`
-	Install     int64  `json:"install"`
-	Login       int64  `json:"login"`
-	Query       int64  `json:"query"`
-	DAU         int64  `json:"dau"`
+	Date    string `json:"date"`
+	Install int64  `json:"install"`
+	Login   int64  `json:"login"`
+	Query   int64  `json:"query"`
+	DAU     int64  `json:"dau"`
 }
 
 // HandleDaily GET /dashboard/daily?from=&to=
@@ -97,8 +97,8 @@ func (app *App) HandleDaily(w http.ResponseWriter, r *http.Request) {
 
 // TopDocItem Top 文档单项
 type TopDocItem struct {
-	DocName string `json:"doc_name"`
-	Count   int64  `json:"count"`
+	DocName  string  `json:"doc_name"`
+	Count    int64   `json:"count"`
 	AvgScore float64 `json:"avg_score"`
 }
 
@@ -133,13 +133,12 @@ func (app *App) HandleTopDocs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, items)
 }
 
-// LowScoreItem 低分问答单项
+// LowScoreItem 低分问答单项（不含用户信息，保护隐私）
 type LowScoreItem struct {
-	UserID    string  `json:"user_id"`
-	Query     string  `json:"query"`
-	Score     float64 `json:"score"`
-	DocName   string  `json:"doc_name"`
-	TS        int64   `json:"ts"`
+	Query   string  `json:"query"`
+	Score   float64 `json:"score"`
+	DocName string  `json:"doc_name"`
+	TS      int64   `json:"ts"`
 }
 
 // HandleLowScore GET /dashboard/low-score?from=&to=&limit=20
@@ -150,7 +149,7 @@ func (app *App) HandleLowScore(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	rows, err := app.store.pool.Query(ctx,
-		`SELECT user_id, query_text, score, doc_name, ts
+		`SELECT query_text, score, doc_name, ts
 		 FROM events WHERE event_type='query' AND score < 0.3 AND ts >= $1 AND ts < $2
 		 ORDER BY ts DESC LIMIT $3`, from, to, limit)
 	if err != nil {
@@ -162,7 +161,7 @@ func (app *App) HandleLowScore(w http.ResponseWriter, r *http.Request) {
 	var items []LowScoreItem
 	for rows.Next() {
 		var item LowScoreItem
-		if err := rows.Scan(&item.UserID, &item.Query, &item.Score, &item.DocName, &item.TS); err != nil {
+		if err := rows.Scan(&item.Query, &item.Score, &item.DocName, &item.TS); err != nil {
 			continue
 		}
 		items = append(items, item)

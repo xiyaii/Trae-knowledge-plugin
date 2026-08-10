@@ -24,7 +24,6 @@ export interface TopDocItem {
 }
 
 export interface LowScoreItem {
-  user_id: string;
   query: string;
   score: number;
   doc_name: string;

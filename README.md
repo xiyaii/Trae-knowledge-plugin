@@ -104,7 +104,7 @@ APIKey 通过 Go 编译期 `ldflags -X main.builtInAPIKey` 注入，嵌入在二
 | `/dashboard/overview?from=&to=` | 累计激活/登录数、区间问答次数、今日 DAU、平均得分、低分占比 |
 | `/dashboard/daily?from=&to=` | 按日聚合的 install/login/query/DAU 趋势 |
 | `/dashboard/top-docs?from=&to=&limit=10` | 命中频次 Top 文档 |
-| `/dashboard/low-score?from=&to=&limit=20` | score < 0.3 的低分问答列表，供人工补充知识库 |
+| `/dashboard/low-score?from=&to=&limit=20` | score < 0.3 的低分问答列表（**不含 user_id**，仅返回 query/score/doc_name/ts），供人工补充知识库 |
 | `/` | go:embed 打包的 React 静态前端 |
 
 **配置注入**（systemd Environment）：
