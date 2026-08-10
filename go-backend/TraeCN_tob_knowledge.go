@@ -399,30 +399,39 @@ type TrackPayload struct {
 	TS        int64   `json:"ts"`
 }
 
-// reportTrack 异步上报埋点事件到运营服务端
-// - trackEndpoint 为空时静默跳过（阶段 1 不影响主流程）
-// - 2s 超时，失败静默，不阻塞知识库问答
+// reportTrack 同步上报埋点事件到运营服务端
+//   - trackEndpoint 为空时静默跳过
+//   - 3s 超时，失败静默，不阻塞知识库问答
+//   - 注：原 goroutine 异步方案在 scanner.Scan() 阻塞期间不被调度，
+//     导致上报丢失；改为同步调用确保可靠性（实测 <100ms）
 func reportTrack(payload TrackPayload) {
 	if trackEndpoint == "" {
 		return
 	}
-	go func() {
-		body, _ := json.Marshal(payload)
-		req, err := http.NewRequest("POST", trackEndpoint, bytes.NewReader(body))
-		if err != nil {
-			return
-		}
-		req.Header.Set("Content-Type", "application/json")
-		if trackToken != "" {
-			req.Header.Set("X-Track-Token", trackToken)
-		}
-		client := &http.Client{Timeout: 2 * time.Second}
-		resp, err := client.Do(req)
-		if err != nil {
-			return
-		}
-		resp.Body.Close()
-	}()
+	body, err := json.Marshal(payload)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[track] ERR Marshal: %v\n", err)
+		return
+	}
+	req, err := http.NewRequest("POST", trackEndpoint, bytes.NewReader(body))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[track] ERR NewRequest: %v\n", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if trackToken != "" {
+		req.Header.Set("X-Track-Token", trackToken)
+	}
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[track] ERR Do: %v event=%s msg_id=%s\n", err, payload.Event, payload.MsgID)
+		return
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		fmt.Fprintf(os.Stderr, "[track] WARN status=%d event=%s msg_id=%s\n", resp.StatusCode, payload.Event, payload.MsgID)
+	}
 }
 
 // handleRequest 处理单个请求
