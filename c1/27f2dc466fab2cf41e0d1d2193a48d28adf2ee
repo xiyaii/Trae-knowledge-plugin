@@ -1,0 +1,50 @@
+admin-service/dashboard-ui/src/App.tsx
+  s_5832e925d86bbc::t_e2fe329c782b44 2
+  s_5832e925d86bbc::t_a18560d2187412 43-50
+  s_5832e925d86bbc::t_5c6bd5dbfd8ae2 90-97
+admin-service/main.go
+  s_5832e925d86bbc::t_80fae6e8212a28 28,35-41,47
+admin-service/dashboard-ui/src/index.css
+  s_5832e925d86bbc::t_e473be012cbaa4 38-64
+admin-service/auth.go
+  s_5832e925d86bbc::t_3b97b58ff12f1e 1-341
+admin-service/config.go
+  s_5832e925d86bbc::t_344a3e4b43fe24 13-19,25-33,45-46
+  s_5832e925d86bbc::t_9de1ffd599f1bc 47
+admin-service/dashboard-ui/src/api.ts
+  s_5832e925d86bbc::t_d13b99f7a3c922 33-39,43-45,62-63
+admin-service/dashboard_embed.go
+  s_5832e925d86bbc::t_dac9826bb204dc 25
+  s_5832e925d86bbc::t_449069f43aaa58 74-75
+admin-service/handler.go
+  s_5832e925d86bbc::t_ddb9bc54d294f4 11-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "c127f2dc466fab2cf41e0d1d2193a48d28adf2ee",
+  "prompts": {},
+  "sessions": {
+    "s_5832e925d86bbc": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a796f944db716ebbe37d0eb",
+        "model": "glm-5.2"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "session_id": "6a796f944db716ebbe37d0eb",
+        "edit_kind": "file_edit",
+        "client_type": "ide",
+        "tool_type": "builtin",
+        "dedupe_key": "6a796f944db716ebbe37d0eb:6a7a99e4af394c6a776e1379:afterEdit:86b4f7d5",
+        "tool_use_id": "6a7a99e4af394c6a776e1379",
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "source_scene": "agent",
+        "external_session_id": "6a796f944db716ebbe37d0eb",
+        "operation_id": "6a7a99e4af394c6a776e1379",
+        "runtime_client": "trae-tob-git-ai"
+      }
+    }
+  }
+}
