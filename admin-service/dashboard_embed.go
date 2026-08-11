@@ -22,6 +22,7 @@ func (app *App) registerDashboard(mux *http.ServeMux) {
 		// API 路径不在此处理
 		if strings.HasPrefix(r.URL.Path, "/track") ||
 			strings.HasPrefix(r.URL.Path, "/dashboard/") ||
+			strings.HasPrefix(r.URL.Path, "/auth/") ||
 			r.URL.Path == "/health" {
 			http.NotFound(w, r)
 			return
@@ -70,6 +71,6 @@ func (app *App) registerDashboard(mux *http.ServeMux) {
 		w.Write(data)
 	})
 
-	// Dashboard 页面走 BasicAuth 保护
-	mux.Handle("/", BasicAuth(app.cfg.DashboardUser, app.cfg.DashboardPass, handler))
+	// Dashboard 页面走飞书 SSO Session 保护
+	mux.Handle("/", app.SessionAuth(handler))
 }

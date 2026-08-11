@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { api, OverviewResp, DailyItem, TopDocItem, LowScoreItem } from './api';
+import { api, OverviewResp, DailyItem, TopDocItem, LowScoreItem, UserInfo } from './api';
 
 // 默认查询最近 7 天
 function getDefaultRange(): { from: string; to: string } {
@@ -40,6 +40,14 @@ export default function App() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+
+  // 拉取当前登录用户信息
+  useEffect(() => {
+    api.me().then(setUserInfo).catch(() => {
+      // 未登录，后端会 401，api.ts 已自动跳转
+    });
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -79,6 +87,14 @@ export default function App() {
         <div className="date-range">
           {from} ~ {to}
         </div>
+        {userInfo && (
+          <div className="user-info">
+            <span className="user-name">{userInfo.name}</span>
+            <button className="logout-btn" onClick={() => api.logout()}>
+              退出登录
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="controls">

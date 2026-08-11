@@ -25,20 +25,26 @@ func main() {
 	// 启动每日聚合任务（凌晨 00:05 刷新昨日数据）
 	go store.StartDailyAggregation()
 
-	app := &App{store: store, cfg: cfg}
+	app := &App{store: store, cfg: cfg, sessions: NewSessionStore()}
 
 	mux := http.NewServeMux()
 
 	// 埋点上报接口（公网，X-Track-Token 鉴权）
 	mux.HandleFunc("/track", app.HandleTrack)
 
-	// Dashboard 接口（BasicAuth 鉴权，建议走内网/VPN）
+	// 飞书 SSO 登录（公开路由，不需要鉴权）
+	mux.HandleFunc("/auth/login", app.handleLogin)
+	mux.HandleFunc("/auth/callback", app.handleCallback)
+	mux.HandleFunc("/auth/logout", app.handleLogout)
+	mux.HandleFunc("/auth/me", app.handleMe)
+
+	// Dashboard 接口（SessionAuth 鉴权，需飞书 SSO 登录）
 	dashMux := http.NewServeMux()
 	dashMux.HandleFunc("/dashboard/overview", app.HandleOverview)
 	dashMux.HandleFunc("/dashboard/daily", app.HandleDaily)
 	dashMux.HandleFunc("/dashboard/top-docs", app.HandleTopDocs)
 	dashMux.HandleFunc("/dashboard/low-score", app.HandleLowScore)
-	mux.Handle("/dashboard/", BasicAuth(cfg.DashboardUser, cfg.DashboardPass, dashMux))
+	mux.Handle("/dashboard/", app.SessionAuth(dashMux))
 
 	// 健康检查
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

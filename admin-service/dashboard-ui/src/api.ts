@@ -30,11 +30,19 @@ export interface LowScoreItem {
   ts: number;
 }
 
-// 请求封装：使用浏览器原生 BasicAuth 弹窗
+export interface UserInfo {
+  user_id: string;
+  name: string;
+}
+
+// 请求封装：使用飞书 SSO 登录后的 Cookie 鉴权
+// session 失效时跳转登录页
 async function fetchJSON<T>(url: string): Promise<T> {
   const resp = await fetch(url, { credentials: 'include' });
   if (resp.status === 401) {
-    throw new Error('Unauthorized');
+    // session 失效，跳转飞书 SSO 登录
+    window.location.href = '/auth/login';
+    throw new Error('Session expired, redirecting to login');
   }
   if (!resp.ok) {
     throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
@@ -51,4 +59,6 @@ export const api = {
     fetchJSON<TopDocItem[]>(`/dashboard/top-docs?from=${from}&to=${to}&limit=${limit}`),
   lowScore: (from: string, to: string, limit = 20) =>
     fetchJSON<LowScoreItem[]>(`/dashboard/low-score?from=${from}&to=${to}&limit=${limit}`),
+  me: () => fetchJSON<UserInfo>(`/auth/me`),
+  logout: () => { window.location.href = '/auth/logout'; },
 };

@@ -8,8 +8,9 @@ import (
 
 // App 持有所有依赖，handler 挂在 App 上
 type App struct {
-	store *Store
-	cfg   *Config
+	store    *Store
+	cfg      *Config
+	sessions *SessionStore
 }
 
 // HandleTrack 处理埋点上报
