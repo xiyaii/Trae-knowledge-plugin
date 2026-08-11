@@ -21,8 +21,9 @@ Trae_Plugin/
 │   ├── TraeCN_tob_knowledge.go   # 知识库 API 调用 + 检索逻辑 + 埋点转发
 │   └── go.mod
 ├── admin-service/           # 运营服务端（独立部署，连 PostgreSQL）
-│   ├── main.go              # HTTP 服务入口 /track + /dashboard/*
+│   ├── main.go              # HTTP 服务入口 /track + /dashboard/* + /auth/*
 │   ├── handler.go           # 埋点上报接口（X-Track-Token 鉴权）
+│   ├── auth.go              # 飞书 SSO 登录（OAuth 2.0 + Session）
 │   ├── dashboard.go         # 看板 API（overview/daily/top-docs/low-score）
 │   ├── dashboard_embed.go   # go:embed 静态前端
 │   ├── store.go             # pgx 数据访问 + 每日聚合
@@ -65,11 +66,12 @@ Webview (React) ──postMessage──► Extension Host ──JSON Lines──
      │                                                              (2s 超时, 失败静默)
      │                                                                   │
      │                                                                   ▼
-     │                                                        ┌───────────────────────┐
-     │                                                        │ admin-service (独立部署) │
-     │                                                        │  /track → PostgreSQL    │
-     │                                                        │  /dashboard/* (BasicAuth) │
-     │                                                        └───────────────────────┘
+     │                                                        ┌───────────────────────────┐
+     │                                                        │ admin-service (独立部署)     │
+     │                                                        │  /track → PostgreSQL        │
+     │                                                        │  /dashboard/* (飞书 SSO)     │
+     │                                                        │  /auth/* (OAuth 2.0 回调)    │
+     │                                                        └───────────────────────────┘
      │                                                                   │
      └─ IME 合成状态管理，避免输入法选词时 Enter 误发送                 └─ go:embed 静态前端
 ```
@@ -97,7 +99,7 @@ APIKey 通过 Go 编译期 `ldflags -X main.builtInAPIKey` 注入，嵌入在二
 | `login_success` | 用户点击"验证企业版订阅"且通过（`webviewProvider.ts`） | `user_id`（iCubeAuthInfo://usertag）、`machine_id` |
 | `query` | go-backend 完成知识库检索后自行生成（含低分命中） | `user_id`、`query`、`score`、`doc_name`、`msg_id` |
 
-**Dashboard 接口**（`/dashboard/*`，BasicAuth 鉴权，建议走内网/VPN）：
+**Dashboard 接口**（`/dashboard/*`，飞书 SSO Session 鉴权）：
 
 | Path | 说明 |
 |---|---|
@@ -114,9 +116,50 @@ APIKey 通过 Go 编译期 `ldflags -X main.builtInAPIKey` 注入，嵌入在二
 | `PORT` | HTTP 监听端口（默认 8080） |
 | `DB_DSN` | PostgreSQL 连接串 |
 | `TRACK_TOKEN` | `/track` 接口鉴权 token，需与 go-backend 编译期注入值一致 |
-| `DASHBOARD_USER` / `DASHBOARD_PASS` | BasicAuth 账号密码 |
+| `DASHBOARD_USER` / `DASHBOARD_PASS` | 兜底 BasicAuth 账号密码（当前未启用，保留） |
+| `LARK_APP_ID` | 飞书自建应用 App ID |
+| `LARK_APP_SECRET` | 飞书自建应用 App Secret |
+| `LARK_REDIRECT_URL` | OAuth 回调地址，如 `http://115.191.37.157:8080/auth/callback` |
+| `ALLOW_LARK_USERS` | 可选：飞书 user_id 白名单（逗号分隔），为空则允许所有飞书用户 |
 
-`/track` 接口公开（仅 token 鉴权），`/dashboard/*` 走 BasicAuth，根路径前端同样受 BasicAuth 保护。
+`/track` 接口公开（仅 token 鉴权），`/dashboard/*` 与根路径前端均走飞书 SSO Session 鉴权。
+
+### 飞书 SSO 登录（admin-service）
+
+运营看板使用飞书 OAuth 2.0 授权码流程登录，流程如下：
+
+```
+浏览器 ──► /auth/login ──302──► 飞书授权页
+                                  │ 用户授权
+                                  ▼
+浏览器 ◄──302── /auth/callback ◄── 飞书回跳 code
+                │
+                ├─ code 换 user_access_token
+                ├─ token 换 userinfo (user_id / name)
+                ├─ 写入内存 Session（TTL 7 天）
+                └─ Set-Cookie: admin_session=xxx ──302──► /
+```
+
+**路由**（`/auth/*`，公开免鉴权）：
+
+| Path | 说明 |
+|---|---|
+| `/auth/login` | 生成 state 防 CSRF，302 跳转飞书授权页 |
+| `/auth/callback` | 接收 code，换 token + userinfo，写 session cookie 后 302 回 `/` |
+| `/auth/logout` | 清除 session cookie，302 回 `/auth/login` |
+| `/auth/me` | 返回当前登录用户信息（user_id / name），前端启动时调用 |
+
+**Session 机制**：
+- 内存存储（单机够用，重启失效需重新登录）
+- Cookie 名 `admin_session`，`HttpOnly` + `SameSite=Lax`，TTL 7 天
+- 临近过期（< 10 分钟）自动后台刷新 `user_access_token`
+
+**飞书后台配置**（[open.feishu.cn/app](https://open.feishu.cn/app)）：
+1. 创建自建应用，获取 App ID / App Secret
+2. 安全设置 → 重定向 URL 填 `http://115.191.37.157:8080/auth/callback`（精确匹配）
+3. 权限管理 → 开通「获取用户身份信息」「获取用户 user ID」
+4. 应用可用范围 → 添加运营人员
+5. 创建版本并发布（自建应用必须发布才生效）
 
 ### 登录鉴权
 
@@ -216,6 +259,7 @@ Trae IDE → 扩展面板 → 更多操作 → 从 VSIX 安装 → 选择生成�
 - [x] 检索阈值：score < 0.2 视为未命中
 - [x] 埋点上报：install / login_success / query 三类事件，go-backend 异步转发到 admin-service
 - [x] 运营看板：admin-service 提供 overview/daily/top-docs/low-score API + React 静态前端
+- [x] 运营看板 SSO 登录：飞书 OAuth 2.0 授权码流程 + 内存 Session + token 自动刷新
 - [ ] 流式输出：启用 `KBRequest.stream`，扩展端增量渲染
 - [ ] 多平台二进制：按 OS/ARCH 自动选择对应编译产物
 - [ ] 服务端鉴权：go-backend `VerifyAuth` 当前为桩实现（空 token 也放行），上线前需接入 Trae 企业版 OpenAPI
