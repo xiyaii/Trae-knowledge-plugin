@@ -32,6 +32,10 @@ func main() {
 	// 埋点上报接口（公网，X-Track-Token 鉴权）
 	mux.HandleFunc("/track", app.HandleTrack)
 
+	// 知识库代理接口（公网，X-Track-Token 鉴权）
+	// 插件 go-backend 通过此接口调用火山引擎知识库，APIKey 仅存于服务端
+	mux.HandleFunc("/kb/chat", app.HandleKBChat)
+
 	// 飞书 SSO 登录（公开路由，不需要鉴权）
 	mux.HandleFunc("/auth/login", app.handleLogin)
 	mux.HandleFunc("/auth/callback", app.handleCallback)

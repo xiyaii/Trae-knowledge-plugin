@@ -6,8 +6,8 @@
 
 - **智能问答**：基于火山引擎知识库检索，返回高相似度匹配结果
 - **多轮对话**：支持上下文历史，保留最近 N 轮（可配置）
-- **企业版鉴权**：自动校验 Trae 企业版订阅状态，Free 用户无法使用
-- **安全无感**：APIKey 编译期内置，用户无需配置，密钥不暴露
+- **企业版鉴权**：自动校验 Trae 企业版订阅状态（读取本地 storage.json 的 productType 字段），Free 用户无法使用
+- **安全无感**：APIKey 仅存于 admin-service 服务端，客户端二进制不含密钥，彻底避免解压分析泄露
 - **中文输入友好**：正确处理 IME 输入法合成期，避免 Enter 误发送
 - **内容清洗**：自动去除知识库切片元信息标签，仅展示问题表现和解决方案
 - **埋点上报**：install / login_success / query 事件异步上报到运营服务端，不影响主流程
@@ -18,16 +18,18 @@
 ```
 Trae_Plugin/
 ├── go-backend/              # Go 后端（JSON Lines 协议，随 VSIX 分发）
-│   ├── TraeCN_tob_knowledge.go   # 知识库 API 调用 + 检索逻辑 + 埋点转发
+│   ├── TraeCN_tob_knowledge.go   # 知识库代理调用 + 检索逻辑 + 埋点转发
+│   ├── auth.go                   # 企业版鉴权（读取 storage.json 校验 productType）
 │   └── go.mod
-├── admin-service/           # 运营服务端（独立部署，连 PostgreSQL）
-│   ├── main.go              # HTTP 服务入口 /track + /dashboard/* + /auth/*
+├── admin-service/           # 运营服务端 + 知识库代理（独立部署，连 PostgreSQL）
+│   ├── main.go              # HTTP 服务入口 /track + /kb/chat + /dashboard/* + /auth/*
 │   ├── handler.go           # 埋点上报接口（X-Track-Token 鉴权）
+│   ├── kb_proxy.go          # 知识库代理接口（X-Track-Token 鉴权 + 转发火山引擎）
 │   ├── auth.go              # 飞书 SSO 登录（OAuth 2.0 + Session）
 │   ├── dashboard.go         # 看板 API（overview/daily/top-docs/low-score）
 │   ├── dashboard_embed.go   # go:embed 静态前端
 │   ├── store.go             # pgx 数据访问 + 每日聚合
-│   ├── config.go            # 环境变量配置
+│   ├── config.go            # 环境变量配置（含 KB_API_KEY）
 │   ├── admin.service        # systemd unit 模板
 │   ├── dashboard-ui/        # 运营看板前端（React + Vite）
 │   └── static/              # 构建产物（go:embed 打包）
@@ -35,7 +37,7 @@ Trae_Plugin/
 │   ├── extension.ts         # 激活入口，注册视图和命令 + install 埋点
 │   ├── webviewProvider.ts   # Webview 管理与消息分发
 │   ├── goBridge.ts          # Go 子进程管理 + JSON Lines 通信
-│   ├── auth.ts              # 企业版登录鉴权（读取 storage.json）
+│   ├── auth.ts              # 企业版登录鉴权（读取 storage.json，与 go-backend/auth.go 逻辑一致）
 │   └── secrets.ts           # SecretStorage 密钥管理（预留）
 ├── webview-ui/              # 前端 UI（React + Vite）
 │   └── src/
@@ -57,17 +59,22 @@ Trae_Plugin/
 ## 架构
 
 ```
-Webview (React) ──postMessage──► Extension Host ──JSON Lines──► Go 后端 ──HTTPS──► 火山引擎知识库
-     │                                │                       │
-     │                                ├─ auth.ts: 读取 storage.json 校验 productType
-     │                                └─ goBridge.ts: 管理子进程生命周期
-     │                                                        │
+Webview (React) ──postMessage──► Extension Host ──JSON Lines──► Go 后端 ──HTTPS──► admin-service /kb/chat ──HTTPS──► 火山引擎知识库
+     │                                │                       │                      │
+     │                                ├─ auth.ts: 读取 storage.json 校验 productType │
+     │                                └─ goBridge.ts: 管理子进程生命周期             │
+     │                                                        │                      │
+     │                                                        ├─ 知识库代理请求（query + history）
+     │                                                        │  X-Track-Token 鉴权   │
+     │                                                        │  APIKey 仅在服务端持有 │
+     │                                                        │                      │
      │                                                        └─ 异步 HTTP POST /track
-     │                                                              (2s 超时, 失败静默)
+     │                                                              (3s 超时, 失败静默)
      │                                                                   │
      │                                                                   ▼
      │                                                        ┌───────────────────────────┐
      │                                                        │ admin-service (独立部署)     │
+     │                                                        │  /kb/chat → 火山引擎知识库  │
      │                                                        │  /track → PostgreSQL        │
      │                                                        │  /dashboard/* (飞书 SSO)     │
      │                                                        │  /auth/* (OAuth 2.0 回调)    │
@@ -76,22 +83,43 @@ Webview (React) ──postMessage──► Extension Host ──JSON Lines──
      └─ IME 合成状态管理，避免输入法选词时 Enter 误发送                 └─ go:embed 静态前端
 ```
 
-埋点链路为两段式：plugin 不直接访问 admin-service，而是发到本地 go-backend（type:'track'），由 go-backend 携带编译期内置的 `trackEndpoint`/`trackToken` 转发到运营服务端。query 事件由 go-backend 自身生成（携带 score/doc_name 等检索结果）。
+知识库调用链路为三段式：plugin go-backend 不再直接调用火山引擎，而是通过 admin-service `/kb/chat` 代理转发。APIKey 仅存于 admin-service 服务端环境变量，客户端二进制不含密钥，彻底避免解压分析泄露。埋点链路同样经 go-backend 转发到 admin-service `/track`。query 事件由 go-backend 自身生成（携带 score/doc_name 等检索结果）。
 
-### APIKey 安全方案
+### APIKey 安全方案（后端代理架构）
 
-APIKey 通过 Go 编译期 `ldflags -X main.builtInAPIKey` 注入，嵌入在二进制中：
+APIKey **仅存于 admin-service 服务端**，客户端二进制不含密钥，彻底避免解压 VSIX 分析泄露。
 
-- `.apikey` 文件存放密钥（已 gitignore，不进仓库）
-- 编译时读取并注入：`go build -ldflags "-X main.builtInAPIKey=$(cat ../.apikey)"`
-- 运行时优先使用环境变量 `TRAE_KB_API_KEY`，其次使用编译期内置值
+**架构变化**：
+- 改造前：go-backend 编译期内置 APIKey，直接调用火山引擎 → 解压 VSIX + `strings` 即可提取
+- 改造后：go-backend 通过 HTTPS 调用 admin-service `/kb/chat` 代理接口，APIKey 存于服务端环境变量 `KB_API_KEY`
+
+**客户端编译期注入**（`.kb_proxy_url` 文件，已 gitignore）：
+- `.kb_proxy_url` 存放 admin-service 的 `/kb/chat` 接口地址
+- 编译时注入：`go build -ldflags "-X main.kbProxyURL=$(cat ../.kb_proxy_url)"`
+- go-backend 调用代理接口时携带 `X-Track-Token` 鉴权（复用 trackToken）
 - JS 层完全不接触密钥，用户无感知
+
+**服务端配置**（systemd Environment）：
+- `KB_API_KEY`：火山引擎知识库 APIKey，仅存于服务端
+- `TRACK_TOKEN`：`/track` 和 `/kb/chat` 接口鉴权 token，需与 go-backend 编译期注入值一致
+
+**鉴权链路**：
+1. 插件 go-backend 启动时读取本地 `storage.json` 校验 `productType`（企业版订阅状态）
+2. 用户提问时，go-backend 携带 `X-Track-Token` 调用 admin-service `/kb/chat`
+3. admin-service 校验 token 后，使用 `KB_API_KEY` 调用火山引擎知识库
+4. 火山引擎返回结果透传回 go-backend，经清洗后展示给用户
 
 ### 埋点与运营看板（admin-service）
 
-`admin-service` 与 `go-backend` 完全解耦：独立 `go.mod`、独立部署（systemd）、独立连 PostgreSQL。两者唯一耦合是 go-backend 编译期内置的 `trackEndpoint` URL。
+`admin-service` 与 `go-backend` 完全解耦：独立 `go.mod`、独立部署（systemd）、独立连 PostgreSQL。两者耦合点为 go-backend 编译期内置的 `trackEndpoint` URL 和 `kbProxyURL` URL。
 
-**埋点事件**（go-backend 异步 POST 到 `/track`，`X-Track-Token` 鉴权）：
+**知识库代理接口**（`/kb/chat`，`X-Track-Token` 鉴权）：
+
+| Path | 说明 |
+|---|---|
+| `/kb/chat` | 接收 go-backend 的知识库检索请求，使用服务端 `KB_API_KEY` 调用火山引擎，透传原始响应 |
+
+**埋点事件**（go-backend 同步 POST 到 `/track`，`X-Track-Token` 鉴权）：
 
 | Event | 触发点 | 关键字段 |
 |---|---|---|
@@ -115,14 +143,15 @@ APIKey 通过 Go 编译期 `ldflags -X main.builtInAPIKey` 注入，嵌入在二
 |---|---|
 | `PORT` | HTTP 监听端口（默认 8080） |
 | `DB_DSN` | PostgreSQL 连接串 |
-| `TRACK_TOKEN` | `/track` 接口鉴权 token，需与 go-backend 编译期注入值一致 |
+| `TRACK_TOKEN` | `/track` 和 `/kb/chat` 接口鉴权 token，需与 go-backend 编译期注入值一致 |
+| `KB_API_KEY` | 火山引擎知识库 APIKey，仅存于服务端，不进入客户端二进制 |
 | `DASHBOARD_USER` / `DASHBOARD_PASS` | 兜底 BasicAuth 账号密码（当前未启用，保留） |
 | `LARK_APP_ID` | 飞书自建应用 App ID |
 | `LARK_APP_SECRET` | 飞书自建应用 App Secret |
 | `LARK_REDIRECT_URL` | OAuth 回调地址，如 `http://115.191.37.157:8080/auth/callback` |
 | `ALLOW_LARK_USERS` | 可选：飞书 user_id 白名单（逗号分隔），为空则允许所有飞书用户 |
 
-`/track` 接口公开（仅 token 鉴权），`/dashboard/*` 与根路径前端均走飞书 SSO Session 鉴权。
+`/track` 和 `/kb/chat` 接口公开（仅 token 鉴权），`/dashboard/*` 与根路径前端均走飞书 SSO Session 鉴权。
 
 ### 飞书 SSO 登录（admin-service）
 
@@ -173,6 +202,10 @@ APIKey 通过 Go 编译期 `ldflags -X main.builtInAPIKey` 注入，嵌入在二
 
 `productType` 位于 `saasEntitlementInfo.productType`，值为数字类型（如 `231`），只要存在即视为企业版用户。
 
+鉴权逻辑在两端同步实现，互相校验：
+- **扩展端**（[src/auth.ts](src/auth.ts)）：Webview 登录按钮触发，校验通过后进入问答界面
+- **Go 后端**（[go-backend/auth.go](go-backend/auth.go)）：每次 query 请求时 `VerifyAuth` 调用 `VerifyStorage()` 二次校验，防止绕过前端直接调用 go-backend
+
 
 storage.json 路径：
 - macOS: `~/Library/Application Support/Trae CN/User/globalStorage/storage.json`
@@ -193,11 +226,16 @@ storage.json 路径：
 
 ```bash
 cd go-backend
-GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.builtInAPIKey=$(cat ../.apikey)" -o ../bin/kb-server-darwin-arm64 .
+GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.kbProxyURL=$(cat ../.kb_proxy_url) -X main.trackEndpoint=$(cat ../.track_endpoint 2>/dev/null || echo '') -X main.trackToken=$(cat ../.track_token 2>/dev/null || echo '')" -o ../bin/kb-server-darwin-arm64 .
 # 如需其他平台：
 # GOOS=darwin GOARCH=amd64 go build -o ../bin/kb-server-darwin-amd64 .
 # GOOS=linux  GOARCH=amd64 go build -o ../bin/kb-server-linux-amd64  .
 ```
+
+**配置文件**（项目根目录，已 gitignore）：
+- `.kb_proxy_url`：admin-service 的 `/kb/chat` 接口地址，如 `http://115.191.37.157:8080/kb/chat`
+- `.track_endpoint`：admin-service 的 `/track` 接口地址，如 `http://115.191.37.157:8080/track`
+- `.track_token`：`/track` 和 `/kb/chat` 接口鉴权 token
 
 ### 2. 安装依赖
 
@@ -252,14 +290,15 @@ Trae IDE → 扩展面板 → 更多操作 → 从 VSIX 安装 → 选择生成�
 
 ## 待办
 
-- [x] Trae 企业版鉴权：读取本地 `storage.json` 校验 `productType` 字段
-- [x] APIKey 内置：通过 Go 编译期 `ldflags -X` 注入，JS 层零密钥接触
+- [x] Trae 企业版鉴权：读取本地 `storage.json` 校验 `productType` 字段（扩展端 + Go 后端双端实现）
+- [x] APIKey 安全：后端代理架构，APIKey 仅存于 admin-service 服务端，客户端二进制不含密钥
 - [x] IME 输入法修复：合成期 Enter 不触发发送
 - [x] 内容清洗：去除 `KBDirectory`/`KBDocName` 等切片元信息
 - [x] 检索阈值：score < 0.2 视为未命中
-- [x] 埋点上报：install / login_success / query 三类事件，go-backend 异步转发到 admin-service
+- [x] 埋点上报：install / login_success / query 三类事件，go-backend 同步转发到 admin-service
 - [x] 运营看板：admin-service 提供 overview/daily/top-docs/low-score API + React 静态前端
 - [x] 运营看板 SSO 登录：飞书 OAuth 2.0 授权码流程 + 内存 Session + token 自动刷新
+- [x] Go 后端鉴权：`VerifyAuth` 调用 `VerifyStorage()` 读取 storage.json 校验 productType
+- [x] 知识库代理：admin-service 新增 `/kb/chat` 接口，go-backend 不再直接调用火山引擎
 - [ ] 流式输出：启用 `KBRequest.stream`，扩展端增量渲染
 - [ ] 多平台二进制：按 OS/ARCH 自动选择对应编译产物
-- [ ] 服务端鉴权：go-backend `VerifyAuth` 当前为桩实现（空 token 也放行），上线前需接入 Trae 企业版 OpenAPI

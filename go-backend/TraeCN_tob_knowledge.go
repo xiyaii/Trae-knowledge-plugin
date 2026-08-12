@@ -7,36 +7,25 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 )
 
-var KnowledgeBaseDomain = "api-knowledgebase.mlp.cn-beijing.volces.com" // 知识库域名
-var ServiceChatPath = "/api/knowledge/service/chat"                     // 支持知识服务的知识库检索接口
-var APIKey = ""                                                         // 运行时由 builtInAPIKey 赋值（编译期 -ldflags "-X main.builtInAPIKey=xxx" 注入）
-var ServiceResourceID = "kb-service-39d7c93c630152d"                    // 您在平台上创建的知识服务ID
-
-// builtInAPIKey 由编译期 ldflags 注入，不对外暴露到 JS 层
-var builtInAPIKey = ""
+// kbProxyURL 由编译期 ldflags 注入，指向 admin-service 的 /kb/chat 代理接口
+// APIKey 不再存在于客户端二进制中，由 admin-service 服务端持有
+var kbProxyURL = ""
 
 // trackEndpoint / trackToken 由编译期 ldflags 注入，用于埋点上报到运营服务端
 // 未注入（空值）时 reportTrack 静默跳过，不影响主流程
 var trackEndpoint = ""
 var trackToken = ""
 
-// LoadConfig 加载配置：优先环境变量（开发调试），其次编译期内置值
+// LoadConfig 加载配置：校验 kbProxyURL 已注入
 func LoadConfig() error {
-	envKey := os.Getenv("TRAE_KB_API_KEY")
-	if envKey != "" {
-		APIKey = envKey
-	} else if builtInAPIKey != "" {
-		APIKey = builtInAPIKey
-	}
-	if APIKey == "" {
-		return fmt.Errorf("APIKey 未配置：请设置环境变量 TRAE_KB_API_KEY 或在编译时通过 -ldflags 注入")
+	if kbProxyURL == "" {
+		return fmt.Errorf("kbProxyURL 未配置：请在编译时通过 -ldflags -X main.kbProxyURL 注入 admin-service 代理地址")
 	}
 	return nil
 }
@@ -160,55 +149,31 @@ func scanDoubleCRLF(data []byte, atEOF bool) (advance int, token []byte, err err
 	return 0, nil, nil
 }
 
-func PrepareRequest(method string, path string, body []byte) *http.Request {
-	u := url.URL{
-		Scheme: "http",
-		Host:   KnowledgeBaseDomain,
-		Path:   path,
-	}
-	req, _ := http.NewRequest(strings.ToUpper(method), u.String(), bytes.NewReader(body))
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Host", KnowledgeBaseDomain)
-	req.Header.Add("Authorization", "Bearer "+APIKey)
-	return req
+// KBProxyRequest go-backend → admin-service /kb/chat 的请求体
+type KBProxyRequest struct {
+	Query   string         `json:"query"`
+	History []MessageParam `json:"history,omitempty"`
 }
 
-func GenerateServiceChatReq(stream bool, query string) *ServiceChatRequest {
-	return &ServiceChatRequest{
-		ServiceResourceID: ServiceResourceID,
-		Stream:            stream,
-		Messages: []MessageParam{
-			// 当query为纯文本时，user的content为query文本
-			{
-				Role:    "user",
-				Content: query,
-			},
-			// 当query包含图片时，user的content为list结构
-			//{
-			// Role:    "user",
-			// Content: []map[string]interface{}{
-			//    {
-			//       "text": query,
-			//       "type": "text",
-			//    },
-			//    {
-			//       "image_url": map[string]string{
-			//          "url": "请传入可访问的图片URL或者Base64编码",
-			//       },
-			//       "type": "image_url",
-			//    },
-			// },
-			//},
-		},
-		//QueryParam: QueryParamInfo{},
+// KnowledgeServiceChat 通过 admin-service 代理调用知识库（APIKey 存在于服务端，客户端不持有）
+// 返回 admin-service 透传的原始 ServiceChatResponse JSON
+func KnowledgeServiceChat(query string, history []MessageParam) (*ServiceChatResponse, error) {
+	proxyReq := KBProxyRequest{
+		Query:   query,
+		History: history,
 	}
-}
+	proxyReqBytes, _ := json.Marshal(proxyReq)
 
-// KnowledgeServiceChat 知识服务-非流式返回，返回完整响应供上层使用（不打印）
-func KnowledgeServiceChat(serviceChatReq *ServiceChatRequest) (*ServiceChatResponse, error) {
-	serviceChatReqBytes, _ := json.Marshal(serviceChatReq)
-	req := PrepareRequest("POST", ServiceChatPath, serviceChatReqBytes)
+	req, err := http.NewRequest("POST", kbProxyURL, bytes.NewReader(proxyReqBytes))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	// 复用 trackToken 作为 /kb/chat 的鉴权 token
+	if trackToken != "" {
+		req.Header.Set("X-Track-Token", trackToken)
+	}
+
 	client := &http.Client{Timeout: 600 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -219,6 +184,10 @@ func KnowledgeServiceChat(serviceChatReq *ServiceChatRequest) (*ServiceChatRespo
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("代理服务返回错误: status=%d, body=%s", resp.StatusCode, string(body))
 	}
 
 	var serviceChatResp *ServiceChatResponse
@@ -264,69 +233,10 @@ func CleanContent(content string) string {
 	return strings.TrimSpace(cleaned)
 }
 
-// KnowledgeServiceChatStream 生成类型知识服务-流式返回（生成类型的知识服务流式返回使用该函数）
-func KnowledgeServiceChatStream(serviceChatReq *ServiceChatRequest) (err error) {
-	chatCompletionReqParamsBytes, _ := json.Marshal(serviceChatReq)
-	request := PrepareRequest("POST", ServiceChatPath, chatCompletionReqParamsBytes)
-	client := &http.Client{
-		Timeout: time.Second * 600,
-	}
-	request.Header.Set("Accept", "text/event-stream")
-	resp, err := client.Do(request)
-	if err != nil {
-		fmt.Printf("请求失败: %s\n", err.Error())
-		return err
-	}
-	defer resp.Body.Close()
-	// 读取流式返回
-	scanner := bufio.NewScanner(resp.Body)
-	// 指定分隔符函数
-	scanner.Split(scanDoubleCRLF)
-
-	var answerBuilder strings.Builder
-	var usage TotalTokenUsage
-
-	buf := make([]byte, 0, 150*1024)
-	scanner.Buffer(buf, 1500*1024) // 可以按需调整scanner的大小
-
-	// 读取数据
-	for scanner.Scan() {
-		streamLine := scanner.Text()
-		fmt.Println(streamLine)
-		if len(streamLine) < 5 {
-			continue
-		}
-		streamJson := streamLine[5:]
-		var serviceChatResponse ServiceChatResponse
-		err := json.Unmarshal([]byte(streamJson), &serviceChatResponse)
-		if err != nil {
-			fmt.Printf("请求失败: %s\n", err.Error())
-			return err
-		}
-		if serviceChatResponse.Data.TokenUsage != nil {
-			usage = *serviceChatResponse.Data.TokenUsage
-		}
-		if serviceChatResponse.Data.End {
-			fmt.Println("流式输出返回结束")
-			break
-		}
-		answerBuilder.WriteString(serviceChatResponse.Data.GenerateAnswer)
-	}
-
-	if err := scanner.Err(); err != nil {
-		fmt.Printf("请求失败: %s\n", err.Error())
-		return err
-	}
-	usageStr, _ := json.Marshal(usage)
-	fmt.Printf("本次请求Token使用情况: %s\n", usageStr)
-	fmt.Printf("LLM回答: %s\n", answerBuilder.String())
-	return nil
-}
-
 // ===================== JSON Lines 协议层 =====================
 // 扩展端（VS Code Extension）通过子进程方式启动本程序，
 // 经 stdin 写入请求（每行一个 JSON），经 stdout 输出响应（每行一个 JSON）。
-// APIKey 由扩展端通过环境变量 TRAE_KB_API_KEY 注入，不进入代码、不进 git。
+// APIKey 不再存在于客户端，知识库调用通过 admin-service /kb/chat 代理转发。
 
 // KBRequest 扩展端发来的请求
 type KBRequest struct {
@@ -362,18 +272,15 @@ type ResultData struct {
 	MdContent   string  `json:"md_content,omitempty"`
 }
 
-// VerifyAuth 预留：校验用户登录态/企业版订阅
-// TODO: 待确认 Trae 企业版 OpenAPI 鉴权方式后实现
+// VerifyAuth 校验用户登录态：读取本地 storage.json 校验 Trae 企业版订阅
+// 逻辑与 src/auth.ts 中的 Auth.verify() 完全一致
 // 返回值: true=放行, false=拒绝
 func VerifyAuth(token string) bool {
-	// 安全加固：空 token 记警告（上线前必须改为 return false）
-	if token == "" {
-		fmt.Fprintln(os.Stderr, "WARN: 收到空 token 请求，当前处于未鉴权模式（开发期放行，上线前必须接入 Trae 企业版鉴权）")
-		return true
+	result := VerifyStorage()
+	if !result.OK {
+		fmt.Fprintf(os.Stderr, "WARN: 鉴权失败: %s\n", result.Reason)
+		return false
 	}
-	// 后续接入 Trae 企业版鉴权：
-	// 1. 用 token 调用 Trae OpenAPI 校验订阅状态
-	// 2. 校验通过返回 true，否则 false
 	return true
 }
 
@@ -462,14 +369,8 @@ func handleRequest(req KBRequest) {
 		return
 	}
 
-	// 调用知识库
-	chatReq := GenerateServiceChatReq(false, req.Query)
-	// 多轮对话历史拼接（history + 当前 query）
-	if len(req.History) > 0 {
-		chatReq.Messages = append(req.History, chatReq.Messages...)
-	}
-
-	chatResp, err := KnowledgeServiceChat(chatReq)
+	// 调用知识库（通过 admin-service 代理，APIKey 存在于服务端）
+	chatResp, err := KnowledgeServiceChat(req.Query, req.History)
 	if err != nil {
 		emitResponse(KBResponse{
 			ID:    req.ID,
