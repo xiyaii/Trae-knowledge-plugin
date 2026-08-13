@@ -59,6 +59,9 @@ export const api = {
     fetchJSON<TopDocItem[]>(`/dashboard/top-docs?from=${from}&to=${to}&limit=${limit}`),
   lowScore: (from: string, to: string, limit = 20) =>
     fetchJSON<LowScoreItem[]>(`/dashboard/low-score?from=${from}&to=${to}&limit=${limit}`),
+  // 拉取更多低分问答（用于增强搜索样本）
+  lowScoreMore: (from: string, to: string, limit = 100) =>
+    fetchJSON<LowScoreItem[]>(`/dashboard/low-score?from=${from}&to=${to}&limit=${limit}`),
   me: () => fetchJSON<UserInfo>(`/auth/me`),
   logout: () => { window.location.href = '/auth/logout'; },
 };

@@ -1,65 +1,61 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { api, OverviewResp, DailyItem, TopDocItem, LowScoreItem, UserInfo } from './api';
-
-// 默认查询最近 7 天
-function getDefaultRange(): { from: string; to: string } {
-  const now = new Date();
-  const to = now.toISOString().slice(0, 10);
-  const from = new Date(now.getTime() - 7 * 24 * 3600 * 1000)
-    .toISOString()
-    .slice(0, 10);
-  return { from, to };
-}
-
-// 分数着色
-function scoreClass(score: number): string {
-  if (score < 0.3) return 'score-low';
-  if (score < 0.5) return 'score-mid';
-  return 'score-high';
-}
-
-// 时间戳转可读时间
-function formatTs(ts: number): string {
-  return new Date(ts).toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+import { KpiCard } from './components/KpiCard';
+import { DailyChart } from './components/DailyChart';
+import { TopDocsChart } from './components/TopDocsChart';
+import { LowScoreTable } from './components/LowScoreTable';
+import {
+  KpiSkeleton,
+  ChartSkeleton,
+  TableSkeleton,
+} from './components/Skeleton';
+import {
+  RANGE_PRESETS,
+  getPresetRange,
+  getPrevRange,
+  getDefaultRange,
+  calcDelta,
+} from './utils/date';
+import { useTheme } from './hooks/useTheme';
 
 export default function App() {
   const { from: defFrom, to: defTo } = getDefaultRange();
   const [from, setFrom] = useState(defFrom);
   const [to, setTo] = useState(defTo);
+  const [activePreset, setActivePreset] = useState<string>('7d');
+  const [customMode, setCustomMode] = useState(false);
 
   const [overview, setOverview] = useState<OverviewResp | null>(null);
+  const [prevOverview, setPrevOverview] = useState<OverviewResp | null>(null);
   const [daily, setDaily] = useState<DailyItem[]>([]);
   const [topDocs, setTopDocs] = useState<TopDocItem[]>([]);
   const [lowScore, setLowScore] = useState<LowScoreItem[]>([]);
 
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const { theme, toggle: toggleTheme } = useTheme();
 
-  // 拉取当前登录用户信息
   useEffect(() => {
-    api.me().then(setUserInfo).catch(() => {
-      // 未登录，后端会 401，api.ts 已自动跳转
-    });
+    api.me().then(setUserInfo).catch(() => {});
   }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [ov, dy, td, ls] = await Promise.all([
+      const prevRange = getPrevRange(from, to);
+      const [ov, dy, td, ls, prevOv] = await Promise.all([
         api.overview(from, to),
         api.daily(from, to),
-        api.topDocs(from, to),
-        api.lowScore(from, to),
+        api.topDocs(from, to, 15),
+        api.lowScoreMore(from, to, 100),
+        api.overview(prevRange.from, prevRange.to).catch(() => null),
       ]);
       setOverview(ov);
+      setPrevOverview(prevOv);
       setDaily(dy);
       setTopDocs(td);
       setLowScore(ls);
@@ -67,6 +63,7 @@ export default function App() {
       setError(e.message);
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   }, [from, to]);
 
@@ -74,172 +71,234 @@ export default function App() {
     load();
   }, [load]);
 
-  // 日趋势最大值，用于柱状图归一化
-  const maxDaily = Math.max(
-    1,
-    ...daily.map((d) => Math.max(d.install, d.login, d.query, d.dau))
-  );
+  // 从 daily 数组派生 sparkline 数据
+  const sparklines = useMemo(() => {
+    const pick = (key: keyof DailyItem) => daily.map((d) => Number(d[key]));
+    return {
+      install: pick('install'),
+      login: pick('login'),
+      query: pick('query'),
+      dau: pick('dau'),
+    };
+  }, [daily]);
+
+  // 应用预设
+  const applyPreset = (preset: typeof RANGE_PRESETS[number]) => {
+    const range = getPresetRange(preset.days);
+    setFrom(range.from);
+    setTo(range.to);
+    setActivePreset(preset.key);
+    setCustomMode(false);
+  };
+
+  // 自定义日期变化
+  const onCustomDateChange = (newFrom: string, newTo: string) => {
+    setFrom(newFrom);
+    setTo(newTo);
+    setCustomMode(true);
+    setActivePreset('');
+  };
+
+  // 计算环比
+  const deltas = useMemo(() => {
+    if (!overview || !prevOverview) return null;
+    return {
+      install: calcDelta(overview.install_count, prevOverview.install_count),
+      login: calcDelta(overview.login_count, prevOverview.login_count),
+      query: calcDelta(overview.query_count, prevOverview.query_count),
+      dau: calcDelta(overview.dau, prevOverview.dau),
+      avgScore: calcDelta(overview.avg_score, prevOverview.avg_score),
+      lowScoreRate: calcDelta(overview.low_score_rate, prevOverview.low_score_rate),
+    };
+  }, [overview, prevOverview]);
 
   return (
     <div className="app">
-      <div className="header">
-        <h1>Trae 知识库助手 · 运营看板</h1>
-        <div className="date-range">
-          {from} ~ {to}
+      <header className="header">
+        <div className="header-left">
+          <h1>Trae 知识库助手 · 运营看板</h1>
+          <div className="header-sub">{from} ~ {to}</div>
         </div>
-        {userInfo && (
-          <div className="user-info">
-            <span className="user-name">{userInfo.name}</span>
-            <button className="logout-btn" onClick={() => api.logout()}>
-              退出登录
-            </button>
-          </div>
-        )}
-      </div>
+        <div className="header-right">
+          <button
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? '切换到亮色' : '切换到暗色'}
+            title={theme === 'dark' ? '切换到亮色' : '切换到暗色'}
+          >
+            {theme === 'dark' ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </button>
+          {userInfo && (
+            <div className="user-info">
+              <div className="user-avatar">{userInfo.name?.charAt(0) || '?'}</div>
+              <span className="user-name">{userInfo.name}</span>
+              <button className="logout-btn" onClick={() => api.logout()}>
+                退出登录
+              </button>
+            </div>
+          )}
+        </div>
+      </header>
 
+      {/* 日期范围控制 */}
       <div className="controls">
-        <label>开始日期</label>
-        <input
-          type="date"
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-        />
-        <label>结束日期</label>
-        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-        <button onClick={load} disabled={loading}>
-          {loading ? '加载中...' : '查询'}
+        <div className="preset-group">
+          {RANGE_PRESETS.map((p) => (
+            <button
+              key={p.key}
+              className={`preset-btn ${activePreset === p.key && !customMode ? 'active' : ''}`}
+              onClick={() => applyPreset(p)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="custom-range">
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => onCustomDateChange(e.target.value, to)}
+            className="date-input"
+          />
+          <span className="range-sep">→</span>
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => onCustomDateChange(from, e.target.value)}
+            className="date-input"
+          />
+        </div>
+        <button className="refresh-btn" onClick={load} disabled={loading}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className={loading ? 'spinning' : ''}>
+            <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          刷新
         </button>
       </div>
 
-      {error && <div className="error">加载失败: {error}</div>}
-
-      {loading && !overview && <div className="loading">加载中...</div>}
-
-      {overview && (
-        <>
-          <div className="cards">
-            <div className="card">
-              <div className="label">累计激活设备数</div>
-              <div className="value">{overview.install_count.toLocaleString()}</div>
-              <div className="sub">首次启动并上报的设备</div>
-            </div>
-            <div className="card">
-              <div className="label">累计登录用户数</div>
-              <div className="value">{overview.login_count.toLocaleString()}</div>
-              <div className="sub">通过企业版鉴权的用户</div>
-            </div>
-            <div className="card">
-              <div className="label">区间问答次数</div>
-              <div className="value">{overview.query_count.toLocaleString()}</div>
-              <div className="sub">{from} ~ {to}</div>
-            </div>
-            <div className="card">
-              <div className="label">今日活跃用户</div>
-              <div className="value">{overview.dau.toLocaleString()}</div>
-              <div className="sub">DAU</div>
-            </div>
-            <div className="card">
-              <div className="label">平均检索得分</div>
-              <div className="value">{overview.avg_score.toFixed(3)}</div>
-              <div className="sub">区间 query 平均 score</div>
-            </div>
-            <div className="card">
-              <div className="label">低分占比</div>
-              <div className="value">{(overview.low_score_rate * 100).toFixed(1)}%</div>
-              <div className="sub">score &lt; 0.3 的 query 占比</div>
-            </div>
-          </div>
-
-          <div className="section">
-            <h2>日趋势</h2>
-            {daily.length === 0 ? (
-              <div className="loading">暂无数据</div>
-            ) : (
-              <div className="bar-chart">
-                {daily.map((d) => (
-                  <div key={d.date} className="bar-row">
-                    <span className="date">{d.date}</span>
-                    <div className="bar-bg">
-                      <div
-                        className="bar-fill"
-                        style={{ width: `${(d.query / maxDaily) * 100}%` }}
-                        title={`问答: ${d.query} | 安装: ${d.install} | 登录: ${d.login} | DAU: ${d.dau}`}
-                      />
-                    </div>
-                    <span className="count">{d.query}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div style={{ marginTop: 12, fontSize: 12, color: '#86868b' }}>
-              柱状图展示问答次数，hover 可看安装/登录/DAU 明细
-            </div>
-          </div>
-
-          <div className="section">
-            <h2>命中频次 Top 文档</h2>
-            {topDocs.length === 0 ? (
-              <div className="loading">暂无数据</div>
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>文档名称</th>
-                    <th>命中次数</th>
-                    <th>平均得分</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topDocs.map((d, i) => (
-                    <tr key={i}>
-                      <td>{d.doc_name}</td>
-                      <td>{d.count}</td>
-                      <td className={`score ${scoreClass(d.avg_score)}`}>
-                        {d.avg_score.toFixed(3)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          <div className="section">
-            <h2>低分问答列表（score &lt; 0.3）</h2>
-            <div style={{ fontSize: 12, color: '#86868b', marginBottom: 12 }}>
-              以下问答知识库命中较差，建议人工补充知识库内容
-            </div>
-            {lowScore.length === 0 ? (
-              <div className="loading">暂无低分问答</div>
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>时间</th>
-                    <th>问题</th>
-                    <th>得分</th>
-                    <th>命中文档</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lowScore.map((d, i) => (
-                    <tr key={i}>
-                      <td>{formatTs(d.ts)}</td>
-                      <td style={{ maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {d.query}
-                      </td>
-                      <td className={`score ${scoreClass(d.score)}`}>
-                        {d.score.toFixed(3)}
-                      </td>
-                      <td>{d.doc_name || '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </>
+      {error && (
+        <motion.div
+          className="error-banner"
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <span>加载失败：{error}</span>
+          <button onClick={load}>重试</button>
+        </motion.div>
       )}
+
+      {/* KPI 卡片区 */}
+      {initialLoading ? (
+        <div className="kpi-row">
+          {Array.from({ length: 6 }).map((_, i) => <KpiSkeleton key={i} />)}
+        </div>
+      ) : overview ? (
+        <div className="kpi-row">
+          <KpiCard
+            index={0}
+            label="累计激活设备数"
+            value={overview.install_count}
+            sub="首次启动并上报的设备"
+            sparkData={sparklines.install}
+            sparkColor="var(--purple)"
+            delta={deltas?.install}
+          />
+          <KpiCard
+            index={1}
+            label="累计登录用户数"
+            value={overview.login_count}
+            sub="通过企业版鉴权的用户"
+            sparkData={sparklines.login}
+            sparkColor="var(--success)"
+            delta={deltas?.login}
+          />
+          <KpiCard
+            index={2}
+            label="区间问答次数"
+            value={overview.query_count}
+            sub={`${from} ~ ${to}`}
+            sparkData={sparklines.query}
+            sparkColor="var(--accent)"
+            delta={deltas?.query}
+          />
+          <KpiCard
+            index={3}
+            label="今日活跃用户"
+            value={overview.dau}
+            sub="DAU"
+            sparkData={sparklines.dau}
+            sparkColor="var(--warning)"
+            delta={deltas?.dau}
+          />
+          <KpiCard
+            index={4}
+            label="平均检索得分"
+            value={overview.avg_score}
+            decimals={3}
+            sub="区间 query 平均 score"
+            sparkData={daily.map((d) => d.query)}
+            sparkColor="var(--accent)"
+            delta={deltas?.avgScore}
+          />
+          <KpiCard
+            index={5}
+            label="低分占比"
+            value={overview.low_score_rate * 100}
+            decimals={1}
+            suffix="%"
+            sub="score < 0.3 的 query 占比"
+            sparkColor="var(--danger)"
+            delta={deltas?.lowScoreRate}
+            invertDelta
+          />
+        </div>
+      ) : null}
+
+      {/* 日趋势 */}
+      <section className="section">
+        <div className="section-header">
+          <h2>日趋势</h2>
+          <span className="section-hint">分组柱状图 + DAU 折线叠加，点击图例切换显示</span>
+        </div>
+        {initialLoading ? <ChartSkeleton /> : <DailyChart data={daily} />}
+      </section>
+
+      <div className="grid-2col">
+        {/* Top 文档 */}
+        <section className="section">
+          <div className="section-header">
+            <h2>命中频次 Top 文档</h2>
+            <span className="section-hint">颜色按平均得分</span>
+          </div>
+          {initialLoading ? <ChartSkeleton /> : <TopDocsChart data={topDocs} />}
+        </section>
+
+        {/* 低分问答 */}
+        <section className="section">
+          <div className="section-header">
+            <h2>低分问答（score &lt; 0.3）</h2>
+            <span className="section-hint">点击行展开详情，支持搜索/排序/导出</span>
+          </div>
+          {initialLoading ? (
+            <TableSkeleton rows={6} />
+          ) : (
+            <LowScoreTable data={lowScore} />
+          )}
+        </section>
+      </div>
+
+      <footer className="footer">
+        <span>Trae 知识库助手运营看板 · 数据更新于 {new Date().toLocaleString('zh-CN')}</span>
+      </footer>
     </div>
   );
 }
