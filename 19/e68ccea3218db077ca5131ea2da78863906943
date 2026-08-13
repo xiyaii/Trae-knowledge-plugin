@@ -1,0 +1,70 @@
+admin-service/dashboard-ui/src/hooks/useCountUp.ts
+  s_ab598cefbece08::t_a3f203f3d68a79 1-43
+admin-service/dashboard-ui/src/index.css
+  s_ab598cefbece08::t_6459a27296e724 139-157,160-168
+  s_ab598cefbece08::t_aa9deef30bdca9 177
+  s_ab598cefbece08::t_af116ec0078821 1-35,64,66-91,98-102,104,107-109,111,113,118,120-122,125,129,132-137,158-159,178-190,193,199,201-202,204,208-210,213-215,219-221,224-231,234-247,250-251,253-294,296-306,309-310,313-347,351-362,365-375,378-390,392-393,396-397,400-412,415,417-423,426-468,470-475,478-481,483-569,572-760,763,766-767,770,773-774,776,778-791,794-818,820,823-832,836-847,849,853,856,858-859,862-864,867-875,878,881-888,890-891,894-896,899-910,914-963,965,968-979,982-986,989-991,994-1039
+  s_ab598cefbece08::t_08ea89ce9b9e75 36-63,65
+  s_ab598cefbece08::t_1a13eb684a3287 138
+admin-service/dashboard-ui/src/components/KpiCard.tsx
+  s_ab598cefbece08::t_a2e010ae139aed 1-7,9-21,23-100
+  s_ab598cefbece08::t_74199cd4dd6d20 8,22
+admin-service/dashboard-ui/src/api.ts
+  s_ab598cefbece08::t_9e4ddfcb307f4e 62-64
+admin-service/dashboard-ui/src/components/TopDocsChart.tsx
+  s_ab598cefbece08::t_6d493d1b3468f3 1-104
+admin-service/dashboard-ui/src/components/LowScoreTable.tsx
+  s_ab598cefbece08::t_1a2669c813e177 1
+  s_ab598cefbece08::t_d97ccf9e7c64c7 2-157,159-206,208-215
+  s_ab598cefbece08::t_dde6026240a966 207
+  s_ab598cefbece08::t_2d14f9b01c215c 158
+admin-service/dashboard-ui/src/App.tsx
+  s_ab598cefbece08::t_eb63e80013881f 39
+  s_ab598cefbece08::t_a2a0112054ee70 1-2,4-19,26-27,30,36,42,49-50,53-55,58,66,74-113,117-120,122,140-150,152,154-184,188-197,199-264,266-273,275-278,280,282-283,285-289,291-301
+  s_ab598cefbece08::t_984d520f409f7a 123-139
+  s_ab598cefbece08::t_c93b57f8ee8191 20
+admin-service/dashboard-ui/src/utils/date.ts
+  s_ab598cefbece08::t_7892f474b40f19 1-66
+admin-service/dashboard-ui/src/components/Skeleton.tsx
+  s_ab598cefbece08::t_bf1dedd9982851 1-60
+admin-service/dashboard-ui/src/hooks/useTheme.ts
+  s_ab598cefbece08::t_42e15a07f069d2 1-26
+README.md
+  s_ab598cefbece08::t_2b86ed2778557a 109-142
+admin-service/dashboard-ui/src/components/DailyChart.tsx
+  s_ab598cefbece08::t_2417d9fc3dc716 1-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "19e68ccea3218db077ca5131ea2da78863906943",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_ab598cefbece08": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7d4c338120603956d02d5c",
+        "model": "glm-5.2"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "tool_use_id": "6a7daade7c1074a05868a166",
+        "external_session_id": "6a7d4c338120603956d02d5c",
+        "edit_kind": "file_edit",
+        "source_scene": "agent",
+        "dedupe_key": "6a7d4c338120603956d02d5c:6a7daade7c1074a05868a166:afterEdit:c2532b86",
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "tool_type": "builtin",
+        "runtime_client": "trae-tob-git-ai",
+        "operation_id": "6a7daade7c1074a05868a166",
+        "client_type": "ide",
+        "session_id": "6a7d4c338120603956d02d5c"
+      }
+    }
+  }
+}
