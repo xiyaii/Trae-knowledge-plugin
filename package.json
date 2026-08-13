@@ -4,6 +4,10 @@
   "description": "基于火山引擎知识库的智能问答助手（Trae 企业版）",
   "version": "0.1.0",
   "publisher": "trae-cn",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xiyaii/Trae-knowledge-plugin.git"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },

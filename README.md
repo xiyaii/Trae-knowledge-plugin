@@ -103,6 +103,12 @@ APIKey **仅存于 admin-service 服务端**，客户端二进制不含密钥，
 - `KB_API_KEY`：火山引擎知识库 APIKey，仅存于服务端
 - `TRACK_TOKEN`：`/track` 和 `/kb/chat` 接口鉴权 token，需与 go-backend 编译期注入值一致
 
+> ⚠️ **APIKey 类型说明**：火山引擎有**两套不通用**的 API Key：
+> - **知识库 APIKey**（纯大写字母+数字，如 `JDEAQ7QJVARQ0R...`）→ 用于 `api-knowledgebase.mlp.cn-beijing.volces.com` 知识库接口
+> - **方舟 Ark APIKey**（`ark-` 开头，如 `ark-29d80408-eeb4...`）→ 用于 `ark.cn-beijing.volces.com` 方舟推理接口
+>
+> 本项目调用的是**知识库接口**，`KB_API_KEY` 必须填写知识库 APIKey（`JDEA...` 格式）。若误填方舟 APIKey 会报 `service apikey not match`（code=1000003）。
+
 **鉴权链路**：
 1. 插件 go-backend 启动时读取本地 `storage.json` 校验 `productType`（企业版订阅状态）
 2. 用户提问时，go-backend 携带 `X-Track-Token` 调用 admin-service `/kb/chat`

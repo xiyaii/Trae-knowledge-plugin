@@ -18,9 +18,9 @@ var kbServiceChatPath = "/api/knowledge/service/chat"
 var kbServiceResourceID = "kb-service-39d7c93c630152d"
 
 type kbServiceChatRequest struct {
-	ServiceResourceID string             `json:"service_resource_id,omitempty"`
-	Stream            bool               `json:"stream"`
-	Messages          []kbMessageParam   `json:"messages"`
+	ServiceResourceID string           `json:"service_resource_id,omitempty"`
+	Stream            bool             `json:"stream"`
+	Messages          []kbMessageParam `json:"messages"`
 }
 
 type kbMessageParam struct {
@@ -29,36 +29,26 @@ type kbMessageParam struct {
 }
 
 type kbServiceChatResponse struct {
-	Code    int64                       `json:"code"`
-	Message string                      `json:"message,omitempty"`
-	Data    *kbCollectionChatResponseData `json:"data,omitempty"`
+	RequestID string                        `json:"request_id,omitempty"`
+	Code      int64                         `json:"code"`
+	Message   string                        `json:"message,omitempty"`
+	Data      *kbCollectionChatResponseData `json:"data,omitempty"`
 }
 
 type kbCollectionChatResponseData struct {
-	kbCollectionSearchData
-	*kbCollectionChatCompletionData
-}
-
-type kbCollectionSearchData struct {
-	Count        int32                       `json:"count"`
-	ResultList   []kbSearchResponseItem      `json:"result_list,omitempty"`
+	Count      int32                  `json:"count"`
+	ResultList []kbSearchResponseItem `json:"result_list,omitempty"`
 }
 
 type kbSearchResponseItem struct {
-	Content     string                `json:"content"`
-	MdContent   string                `json:"md_content,omitempty"`
-	Score       float64               `json:"score"`
-	RerankScore float64               `json:"rerank_score,omitempty"`
-	ChunkTitle  string                `json:"chunk_title,omitempty"`
-	DocInfo     kbSearchItemDocInfo   `json:"doc_info,omitempty"`
+	Content   string              `json:"content"`
+	MdContent string              `json:"md_content,omitempty"`
+	Score     float64             `json:"score"`
+	DocInfo   kbSearchItemDocInfo `json:"doc_info,omitempty"`
 }
 
 type kbSearchItemDocInfo struct {
 	DocName string `json:"doc_name"`
-}
-
-type kbCollectionChatCompletionData struct {
-	GenerateAnswer string `json:"generated_answer"`
 }
 
 // ===================== /kb/chat 代理接口 =====================
