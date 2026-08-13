@@ -10,6 +10,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -174,7 +175,9 @@ func KnowledgeServiceChat(query string, history []MessageParam) (*ServiceChatRes
 		req.Header.Set("X-Track-Token", trackToken)
 	}
 
-	client := &http.Client{Timeout: 600 * time.Second}
+	// 超时 55s：略短于 JS 端 60s，避免客户端先超时产生孤儿请求
+	// 知识库 embedding+rerank 正常 5-15s，55s 足够覆盖异常慢请求
+	client := &http.Client{Timeout: 55 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -284,11 +287,20 @@ func VerifyAuth(token string) bool {
 	return true
 }
 
+// emitMu 保护 stdout 并发写入，避免多 goroutine 输出交错
+var emitMu sync.Mutex
+
 // emitResponse 输出一行 JSON 响应到 stdout
 func emitResponse(resp KBResponse) {
 	bytes, _ := json.Marshal(resp)
+	emitMu.Lock()
 	fmt.Println(string(bytes))
+	emitMu.Unlock()
 }
+
+// concurrencySem 限制并发请求数，避免无界 goroutine 耗尽资源
+// 客户端子进程场景并发量通常 <10，16 足够应对突发流量
+var concurrencySem = make(chan struct{}, 16)
 
 // ===================== 埋点上报 =====================
 
@@ -395,7 +407,17 @@ func handleRequest(req KBRequest) {
 	// 注：火山向量检索得分范围通常 0.2-0.5，0.5 阈值过于严格会误杀有效结果
 	// 检索质量主要由火山知识库后台的 embedding/rerank 配置控制，此处仅做兜底过滤
 	if best.Score < 0.2 {
-		// 异步上报 query 事件（低分也记录，便于分析知识库覆盖缺口）
+		// 先返回结果给用户，再上报埋点（避免埋点阻塞用户响应）
+		emitResponse(KBResponse{
+			ID:   req.ID,
+			Type: "result",
+			Data: ResultData{
+				Count:   0,
+				Score:   best.Score,
+				Content: "知识库未检索到相关内容，请寻找Trae技术支持进行确认",
+			},
+		})
+		// 上报 query 事件（低分也记录，便于分析知识库覆盖缺口）
 		reportTrack(TrackPayload{
 			Event:     "query",
 			UserID:    req.UserID,
@@ -407,32 +429,10 @@ func handleRequest(req KBRequest) {
 			PluginVer: req.PluginVer,
 			TS:        time.Now().UnixMilli(),
 		})
-		emitResponse(KBResponse{
-			ID:   req.ID,
-			Type: "result",
-			Data: ResultData{
-				Count:   0,
-				Score:   best.Score,
-				Content: "知识库未检索到相关内容，请寻找Trae技术支持进行确认",
-			},
-		})
 		return
 	}
 
-	// 异步上报 query 事件
-	reportTrack(TrackPayload{
-		Event:     "query",
-		UserID:    req.UserID,
-		MachineID: req.MachineID,
-		MsgID:     req.ID,
-		Query:     req.Query,
-		Score:     best.Score,
-		DocName:   best.DocInfo.DocName,
-		Platform:  req.Platform,
-		PluginVer: req.PluginVer,
-		TS:        time.Now().UnixMilli(),
-	})
-
+	// 先返回结果给用户，再上报埋点
 	emitResponse(KBResponse{
 		ID:   req.ID,
 		Type: "result",
@@ -446,9 +446,25 @@ func handleRequest(req KBRequest) {
 			MdContent:   CleanContent(best.MdContent),
 		},
 	})
+
+	// 上报 query 事件
+	reportTrack(TrackPayload{
+		Event:     "query",
+		UserID:    req.UserID,
+		MachineID: req.MachineID,
+		MsgID:     req.ID,
+		Query:     req.Query,
+		Score:     best.Score,
+		DocName:   best.DocInfo.DocName,
+		Platform:  req.Platform,
+		PluginVer: req.PluginVer,
+		TS:        time.Now().UnixMilli(),
+	})
 }
 
 // runServer JSON Lines 协议主循环：从 stdin 读请求，向 stdout 写响应
+// 并发处理：每个请求独立 goroutine，由 concurrencySem 限制并发数（16）
+// 响应通过 emitMu 互斥写入 stdout，JS 端按 id 匹配 pending，顺序无关
 func runServer() error {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Buffer(make([]byte, 1024*1024), 10*1024*1024)
@@ -465,7 +481,13 @@ func runServer() error {
 			})
 			continue
 		}
-		handleRequest(req)
+		// 并发处理：避免单个慢请求阻塞后续请求
+		// 信号量满时阻塞在此，实现背压（backpressure）
+		concurrencySem <- struct{}{}
+		go func(r KBRequest) {
+			defer func() { <-concurrencySem }()
+			handleRequest(r)
+		}(req)
 	}
 	return scanner.Err()
 }

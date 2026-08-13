@@ -17,6 +17,19 @@ var kbDomain = "api-knowledgebase.mlp.cn-beijing.volces.com"
 var kbServiceChatPath = "/api/knowledge/service/chat"
 var kbServiceResourceID = "kb-service-39d7c93c630152d"
 
+// kbHTTPClient 全局复用连接池，避免每次请求重新建立 TCP 连接
+// - MaxIdleConnsPerHost: 10 对单 host 足够，超过则新建连接
+// - IdleConnTimeout: 90s（默认值），空闲超时后关闭连接
+// - 整体超时 55s 略短于 JS 端 60s，避免孤儿请求
+var kbHTTPClient = &http.Client{
+	Timeout: 55 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        20,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     90 * time.Second,
+	},
+}
+
 type kbServiceChatRequest struct {
 	ServiceResourceID string           `json:"service_resource_id,omitempty"`
 	Stream            bool             `json:"stream"`
@@ -126,8 +139,8 @@ func callKnowledgeBase(chatReq *kbServiceChatRequest, apiKey string) (*kbService
 	req.Header.Set("Host", kbDomain)
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 
-	client := &http.Client{Timeout: 600 * time.Second}
-	resp, err := client.Do(req)
+	// 使用全局 kbHTTPClient 复用 TCP 连接，避免每次请求重新握手
+	resp, err := kbHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

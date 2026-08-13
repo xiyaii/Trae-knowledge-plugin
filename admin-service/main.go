@@ -62,10 +62,12 @@ func main() {
 	log.Printf("admin-service 启动于 %s", addr)
 
 	srv := &http.Server{
-		Addr:         addr,
-		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		Addr:        addr,
+		Handler:     mux,
+		ReadTimeout: 10 * time.Second,
+		// WriteTimeout 需覆盖 /kb/chat 的 55s 知识库调用 + 网络往返
+		// 原值 10s 会强制中断长耗时请求，导致 502
+		WriteTimeout: 60 * time.Second,
 	}
 
 	if err := srv.ListenAndServe(); err != nil {

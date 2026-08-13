@@ -126,13 +126,15 @@ export class GoBridge {
     await this.ensureProcess(context);
     // 传递用户登录态给 Go 端用于鉴权（预留，当前 Go 端对空 token 仅记警告）
     req.token = this.cachedToken;
+    // 超时分级：query 60s（知识库检索可能较慢），track 10s（埋点应快速完成）
+    const timeoutMs = req.type === 'track' ? 10000 : 60000;
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
         if (this.pending.has(req.id)) {
           this.pending.delete(req.id);
-          resolve({ id: req.id, type: 'error', error: '请求超时（30s）' });
+          resolve({ id: req.id, type: 'error', error: `请求超时（${timeoutMs / 1000}s）` });
         }
-      }, 30000);
+      }, timeoutMs);
       this.pending.set(req.id, (resp: KBResponse) => {
         clearTimeout(timeout);
         resolve(resp);
