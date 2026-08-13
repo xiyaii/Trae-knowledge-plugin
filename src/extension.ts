@@ -26,7 +26,7 @@ export function activate(context: vscode.ExtensionContext) {
   // 注册 Webview 视图
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
-      'kbAssistant.chatView',
+      'traeAsk.chatView',
       webviewProvider,
       { webviewOptions: { retainContextWhenHidden: true } }
     )
@@ -34,13 +34,13 @@ export function activate(context: vscode.ExtensionContext) {
 
   // 注册命令
   context.subscriptions.push(
-    vscode.commands.registerCommand('kbAssistant.openChat', () => {
-      vscode.commands.executeCommand('workbench.view.extension.kb-assistant');
+    vscode.commands.registerCommand('traeAsk.openChat', () => {
+      vscode.commands.executeCommand('workbench.view.extension.trae-ask');
     }),
-    vscode.commands.registerCommand('kbAssistant.configure', async () => {
+    vscode.commands.registerCommand('traeAsk.configure', async () => {
       await webviewProvider.openSettings();
     }),
-    vscode.commands.registerCommand('kbAssistant.clearChat', () => {
+    vscode.commands.registerCommand('traeAsk.clearChat', () => {
       webviewProvider.clearChat();
     })
   );

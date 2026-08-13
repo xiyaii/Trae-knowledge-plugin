@@ -14,7 +14,7 @@ export interface ChatMessage {
 }
 
 export class WebviewProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = 'kbAssistant.chatView';
+  public static readonly viewType = 'traeAsk.chatView';
   private view?: vscode.WebviewView;
   private messages: ChatMessage[] = [];
 
@@ -89,7 +89,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
 
         const query: string = msg.query;
         const maxHistory = vscode.workspace
-          .getConfiguration('kbAssistant')
+          .getConfiguration('traeAsk')
           .get<number>('maxHistory', 10);
         const history = this.messages
           .filter((m) => !m.error)
@@ -178,7 +178,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} data: https:; font-src ${webview.cspSource} data:;">
-  <title>知识库助手</title>
+  <title>Trae Ask</title>
   <link rel="stylesheet" href="${styleUri}">
 </head>
 <body>
