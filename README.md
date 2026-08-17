@@ -31,6 +31,13 @@
 在 Trae IDE 扩展面板中通过 VSIX 文件手动安装。
 
 ### 2. 验证企业版订阅
+`productType` 位于 `saasEntitlementInfo.productType`，值为数字类型（如 `231`），只要存在即视为企业版用户。
+
+
+storage.json 路径：
+- macOS: `~/Library/Application Support/Trae CN/User/globalStorage/storage.json`
+- Windows: `%APPDATA%/Trae CN/User/globalStorage/storage.json`
+- Linux: `$XDG_CONFIG_HOME/Trae CN/User/globalStorage/storage.json`
 
 1. 点击左侧活动栏的 Trae Ask 图标（💬）
 2. 点击「验证企业版订阅」按钮
