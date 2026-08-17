@@ -94,7 +94,7 @@ export default function App() {
         )}
       </div>
 
-      <InputBox onSend={sendQuery} disabled={loading} />
+      <InputBox onSend={sendQuery} disabled={loading || uninstalled} />
     </div>
   );
 }

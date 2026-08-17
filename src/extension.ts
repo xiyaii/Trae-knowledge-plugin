@@ -1,9 +1,19 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 import { WebviewProvider } from './webviewProvider';
 import { Secrets } from './secrets';
 import { GoBridge } from './goBridge';
 
 export const EXTENSION_ID = 'trae-cn.trae-ask';
+
+let webviewProviderRef: WebviewProvider | undefined;
+
+function shutdownExtension(reason: string) {
+  if (GoBridge.isDisposed()) return;
+  console.log(`[trae-ask] shutting down: ${reason}`);
+  GoBridge.dispose();
+  webviewProviderRef?.notifyUninstalled();
+}
 
 export function activate(context: vscode.ExtensionContext) {
   // 初始化密钥管理
@@ -23,13 +33,13 @@ export function activate(context: vscode.ExtensionContext) {
     }).catch(() => {});
   }
 
-  const webviewProvider = new WebviewProvider(context);
+  webviewProviderRef = new WebviewProvider(context);
 
   // 注册 Webview 视图
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
       'traeAsk.chatView',
-      webviewProvider,
+      webviewProviderRef,
       { webviewOptions: { retainContextWhenHidden: true } }
     )
   );
@@ -40,7 +50,7 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.commands.executeCommand('workbench.view.extension.trae-ask');
     }),
     vscode.commands.registerCommand('traeAsk.clearChat', () => {
-      webviewProvider.clearChat();
+      webviewProviderRef?.clearChat();
     }),
     // 手动卸载命令：用户可通过命令面板或 webview 按钮触发
     vscode.commands.registerCommand('traeAsk.uninstall', async () => {
@@ -50,11 +60,7 @@ export function activate(context: vscode.ExtensionContext) {
         '卸载'
       );
       if (choice !== '卸载') return;
-      // 先清理 Go 子进程
-      GoBridge.dispose();
-      // 通知 webview 展示卸载中状态
-      webviewProvider.notifyUninstalled();
-      // 调用 VS Code 卸载 API
+      shutdownExtension('user-triggered uninstall');
       try {
         await vscode.commands.executeCommand(
           'workbench.extensions.uninstallExtension',
@@ -74,20 +80,29 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   // 监听扩展变更：当用户在扩展面板卸载/禁用本插件但未 reload 时，
-  // 主动检测并清理 Go 子进程，防止知识库仍可使用
+  // 通过多重检测确认插件已被移除，立即清理 Go 子进程
   context.subscriptions.push(
     vscode.extensions.onDidChange(() => {
+      // 检测方式 1：getExtension 返回 null/undefined
       const ext = vscode.extensions.getExtension(EXTENSION_ID);
       if (!ext) {
-        // 插件已被卸载，立即清理
-        GoBridge.dispose();
-        webviewProvider.notifyUninstalled();
+        shutdownExtension('extension removed from registry');
+        return;
+      }
+      // 检测方式 2：扩展目录已被删除（VS Code 卸载时会立即删除磁盘文件）
+      try {
+        if (!fs.existsSync(context.extensionPath)) {
+          shutdownExtension('extension directory deleted');
+          return;
+        }
+      } catch {
+        // fs 访问异常也视为已卸载
+        shutdownExtension('fs access error on extension path');
       }
     })
   );
 }
 
 export function deactivate() {
-  // 卸载/禁用插件时清理 Go 子进程，防止进程残留导致侧边栏仍可使用
-  GoBridge.dispose();
+  shutdownExtension('deactivate() called');
 }

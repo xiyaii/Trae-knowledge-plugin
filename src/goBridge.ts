@@ -49,6 +49,8 @@ export class GoBridge {
   private static pending = new Map<string, (resp: KBResponse) => void>();
   private static buffer = '';
   private static cachedToken: string | undefined;
+  private static disposed = false;
+  private static extensionPath: string | undefined;
 
   private static getBinaryPath(extensionPath: string): string {
     const platform = process.platform;
@@ -63,15 +65,19 @@ export class GoBridge {
   static async ensureProcess(
     context: vscode.ExtensionContext
   ): Promise<void> {
-    if (this.proc && !this.proc.killed) {
-      return;
+    if (this.disposed) {
+      throw new Error('插件已停用，无法启动后端服务');
     }
-
+    // 每次启动前记录 extensionPath，用于后续文件系统存活检测
+    this.extensionPath = context.extensionPath;
+    // 文件系统存活检测：VS Code 卸载时会立即删除扩展目录
     const binaryPath = this.getBinaryPath(context.extensionPath);
     if (!fs.existsSync(binaryPath)) {
-      throw new Error(
-        `Go 后端二进制不存在: ${binaryPath}，请先运行 npm run build-go`
-      );
+      this.disposed = true;
+      throw new Error('插件文件已被删除，服务不可用');
+    }
+    if (this.proc && !this.proc.killed) {
+      return;
     }
 
     // 确保二进制有执行权限（vsix 安装后可能丢失）
@@ -128,7 +134,36 @@ export class GoBridge {
     context: vscode.ExtensionContext,
     req: KBRequest
   ): Promise<KBResponse> {
-    await this.ensureProcess(context);
+    if (this.disposed) {
+      return { id: req.id, type: 'error', error: '插件已停用' };
+    }
+    // 快速文件存活检测：VS Code 卸载时二进制文件会被立即删除，
+    // 此时即使旧进程还在也应拒绝请求
+    try {
+      const binaryPath = this.getBinaryPath(context.extensionPath);
+      if (!fs.existsSync(binaryPath)) {
+        this.disposed = true;
+        // 进程还在就杀掉
+        if (this.proc && !this.proc.killed) {
+          try { this.proc.kill('SIGKILL'); } catch {}
+          this.proc = undefined;
+        }
+        for (const [id, cb] of this.pending) {
+          this.pending.delete(id);
+          cb({ id, type: 'error', error: '插件已卸载，服务已停止' });
+        }
+        return { id: req.id, type: 'error', error: '插件已卸载，服务已停止' };
+      }
+    } catch {
+      // fs 异常也直接拒绝
+      this.disposed = true;
+      return { id: req.id, type: 'error', error: '插件已卸载，服务已停止' };
+    }
+    try {
+      await this.ensureProcess(context);
+    } catch (err: any) {
+      return { id: req.id, type: 'error', error: err?.message || '后端服务不可用' };
+    }
     // 传递用户登录态给 Go 端用于鉴权（预留，当前 Go 端对空 token 仅记警告）
     req.token = this.cachedToken;
     // 超时分级：query 60s（知识库检索可能较慢），track 10s（埋点应快速完成）
@@ -144,11 +179,22 @@ export class GoBridge {
         clearTimeout(timeout);
         resolve(resp);
       });
-      this.proc!.stdin.write(JSON.stringify(req) + '\n');
+      try {
+        this.proc!.stdin.write(JSON.stringify(req) + '\n');
+      } catch {
+        this.pending.delete(req.id);
+        clearTimeout(timeout);
+        resolve({ id: req.id, type: 'error', error: '后端进程不可用' });
+      }
     });
   }
 
+  static isDisposed(): boolean {
+    return this.disposed;
+  }
+
   static dispose() {
+    this.disposed = true;
     if (this.proc) {
       // 先尝试 SIGTERM 优雅退出，清理 pending 请求
       for (const [id, cb] of this.pending) {

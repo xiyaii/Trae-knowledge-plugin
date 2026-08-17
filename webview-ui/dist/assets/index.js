@@ -19845,7 +19845,7 @@
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "检索中..." })
         ] })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(InputBox, { onSend: sendQuery, disabled: loading })
+      /* @__PURE__ */ jsxRuntimeExports.jsx(InputBox, { onSend: sendQuery, disabled: loading || uninstalled })
     ] });
   }
   const root = client.createRoot(document.getElementById("root"));

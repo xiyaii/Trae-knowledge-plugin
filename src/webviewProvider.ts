@@ -75,6 +75,11 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         break;
       }
       case 'query': {
+        // 插件已停用：拒绝处理并通知 webview
+        if (GoBridge.isDisposed()) {
+          this.view.webview.postMessage({ type: 'uninstalled' });
+          return;
+        }
         // 鉴权拦截
         if (!Auth.isAuthenticated()) {
           const result = await Auth.verify();
