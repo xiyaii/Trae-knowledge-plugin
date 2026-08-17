@@ -200,6 +200,7 @@ func writeJSON(w http.ResponseWriter, v interface{}) {
 // FeedbackItem 点踩明细单项
 type FeedbackItem struct {
 	Query   string `json:"query"`
+	Answer  string `json:"answer"`
 	DocName string `json:"doc_name"`
 	Reason  string `json:"reason"`
 	TS      int64  `json:"ts"`
@@ -214,9 +215,9 @@ func (app *App) HandleFeedback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	rows, err := app.store.pool.Query(ctx,
-		`SELECT query_text, doc_name, feedback_reason, ts
+		`SELECT query_text, answer, doc_name, feedback_reason, ts
 		 FROM (
-		   SELECT query_text, doc_name, feedback_reason, ts,
+		   SELECT query_text, answer, doc_name, feedback_reason, ts,
 		          ROW_NUMBER() OVER (PARTITION BY msg_id ORDER BY ts DESC, id DESC) AS rn
 		   FROM events
 		   WHERE event_type='feedback' AND feedback='dislike' AND ts >= $1 AND ts < $2
@@ -231,7 +232,7 @@ func (app *App) HandleFeedback(w http.ResponseWriter, r *http.Request) {
 	items := []FeedbackItem{}
 	for rows.Next() {
 		var it FeedbackItem
-		if err := rows.Scan(&it.Query, &it.DocName, &it.Reason, &it.TS); err != nil {
+		if err := rows.Scan(&it.Query, &it.Answer, &it.DocName, &it.Reason, &it.TS); err != nil {
 			continue
 		}
 		items = append(items, it)

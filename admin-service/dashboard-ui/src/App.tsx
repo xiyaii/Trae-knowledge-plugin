@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { api, OverviewResp, DailyItem, TopDocItem, LowScoreItem, FeedbackItem, UserInfo } from './api';
 import { KpiCard } from './components/KpiCard';
 import { DailyChart } from './components/DailyChart';
@@ -32,6 +34,7 @@ export default function App() {
   const [topDocs, setTopDocs] = useState<TopDocItem[]>([]);
   const [lowScore, setLowScore] = useState<LowScoreItem[]>([]);
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
+  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -343,13 +346,14 @@ export default function App() {
                   <th>时间</th>
                   <th>问题</th>
                   <th>命中文档</th>
+                  <th>答案</th>
                   <th>点踩原因</th>
                 </tr>
               </thead>
               <tbody>
                 {feedback.length === 0 ? (
                   <tr>
-                    <td colSpan={4} style={{ textAlign: 'center', padding: 24 }}>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: 24 }}>
                       暂无点踩数据
                     </td>
                   </tr>
@@ -359,6 +363,26 @@ export default function App() {
                       <td>{new Date(it.ts).toLocaleString('zh-CN')}</td>
                       <td>{it.query}</td>
                       <td>{it.doc_name || '-'}</td>
+                      <td className="td-answer">
+                        {it.answer ? (
+                          <>
+                            <span className="answer-preview">
+                              {it.answer.slice(0, 80)}
+                              {it.answer.length > 80 ? '…' : ''}
+                            </span>
+                            {it.answer.length > 80 && (
+                              <button
+                                className="answer-more-btn"
+                                onClick={() => setSelectedFeedback(it)}
+                              >
+                                查看完整
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-muted">-</span>
+                        )}
+                      </td>
                       <td>{it.reason || '-'}</td>
                     </tr>
                   ))
@@ -368,6 +392,79 @@ export default function App() {
           </>
         ) : null}
       </section>
+
+      {/* 答案详情抽屉：右侧滑出，markdown 渲染完整答案 */}
+      <AnimatePresence>
+        {selectedFeedback && (
+          <motion.div
+            className="drawer-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setSelectedFeedback(null)}
+          >
+            <motion.aside
+              className="feedback-drawer"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ duration: 0.3, ease: [0.22, 0.61, 0.36, 1] }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="drawer-header">
+                <h3>答案详情</h3>
+                <button
+                  className="drawer-close"
+                  onClick={() => setSelectedFeedback(null)}
+                  aria-label="关闭"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="drawer-body">
+                <div className="drawer-meta">
+                  <div className="meta-row">
+                    <span className="meta-label">时间</span>
+                    <span className="meta-value">
+                      {new Date(selectedFeedback.ts).toLocaleString('zh-CN')}
+                    </span>
+                  </div>
+                  <div className="meta-row">
+                    <span className="meta-label">问题</span>
+                    <span className="meta-value">{selectedFeedback.query}</span>
+                  </div>
+                  <div className="meta-row">
+                    <span className="meta-label">命中文档</span>
+                    <span className="meta-value">
+                      {selectedFeedback.doc_name || '未命中'}
+                    </span>
+                  </div>
+                  <div className="meta-row">
+                    <span className="meta-label">点踩原因</span>
+                    <span className="meta-value">
+                      {selectedFeedback.reason || '未填写'}
+                    </span>
+                  </div>
+                </div>
+                <div className="drawer-divider" />
+                <div className="drawer-section">
+                  <div className="drawer-section-title">AI 回答</div>
+                  <div className="drawer-answer">
+                    {selectedFeedback.answer ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {selectedFeedback.answer}
+                      </ReactMarkdown>
+                    ) : (
+                      <span className="text-muted">无答案内容</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.aside>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <footer className="footer">
         <span>Trae 知识库助手运营看板 · 数据更新于 {new Date().toLocaleString('zh-CN')}</span>

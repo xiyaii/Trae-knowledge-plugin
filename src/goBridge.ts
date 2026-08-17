@@ -17,6 +17,7 @@ export interface KBRequest {
   plugin_ver?: string;        // 插件版本
   msg_id?: string;            // 关联的 query 请求 ID（feedback 事件用）
   doc_name?: string;          // 命中文档名（feedback 事件用）
+  answer?: string;            // AI 回答内容（feedback 事件用，截断 8000 字符）
   feedback?: 'like' | 'dislike';
   feedback_reason?: string;   // 点踩原因（多选以分号拼接）
 }

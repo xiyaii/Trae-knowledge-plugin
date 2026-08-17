@@ -35,6 +35,7 @@ export interface LowScoreItem {
 
 export interface FeedbackItem {
   query: string;
+  answer: string;
   doc_name: string;
   reason: string;
   ts: number;

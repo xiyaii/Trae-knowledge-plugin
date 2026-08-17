@@ -256,6 +256,7 @@ type KBRequest struct {
 	PluginVer      string         `json:"plugin_ver,omitempty"`      // 插件版本
 	MsgID          string         `json:"msg_id,omitempty"`          // 关联的 query 请求 ID（feedback 事件用）
 	DocName        string         `json:"doc_name,omitempty"`        // 命中文档名（feedback 事件用）
+	Answer         string         `json:"answer,omitempty"`          // AI 回答内容（feedback 事件用）
 	Feedback       string         `json:"feedback,omitempty"`        // like | dislike（feedback 事件）
 	FeedbackReason string         `json:"feedback_reason,omitempty"` // 点踩原因（多选以分号拼接）
 }
@@ -320,6 +321,7 @@ type TrackPayload struct {
 	Query          string  `json:"query,omitempty"`
 	Score          float64 `json:"score,omitempty"`
 	DocName        string  `json:"doc_name,omitempty"`
+	Answer         string  `json:"answer,omitempty"`
 	Platform       string  `json:"platform,omitempty"`
 	PluginVer      string  `json:"plugin_ver,omitempty"`
 	Feedback       string  `json:"feedback,omitempty"`
@@ -376,6 +378,7 @@ func handleRequest(req KBRequest) {
 				MsgID:          req.MsgID,
 				Query:          req.Query,
 				DocName:        req.DocName,
+				Answer:         req.Answer,
 				Platform:       req.Platform,
 				PluginVer:      req.PluginVer,
 				Feedback:       req.Feedback,

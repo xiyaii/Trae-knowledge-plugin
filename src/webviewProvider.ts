@@ -174,6 +174,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
             msg_id: msg.msgId,
             query: userQuery,
             doc_name: target.source?.doc_name,
+            answer: target.content?.slice(0, 8000),
             feedback: msg.feedback,
             feedback_reason: msg.reason,
             user_id: Auth.getUsertag() || undefined,
