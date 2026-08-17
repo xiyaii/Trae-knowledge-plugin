@@ -202,21 +202,20 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       case 'clearChat':
         this.clearChat();
         break;
-      case 'openSettings':
-        await this.openSettings();
+      case 'uninstall':
+        await vscode.commands.executeCommand('traeAsk.uninstall');
         break;
     }
+  }
+
+  /** 通知 webview 插件已被卸载，展示禁用状态 */
+  notifyUninstalled() {
+    this.view?.webview.postMessage({ type: 'uninstalled' });
   }
 
   clearChat() {
     this.messages = [];
     this.view?.webview.postMessage({ type: 'update', messages: this.messages });
-  }
-
-  async openSettings() {
-    vscode.window.showInformationMessage(
-      '配置功能预留：待 Trae 企业版鉴权方案确认后启用'
-    );
   }
 
   private getHtml(webview: vscode.Webview): string {

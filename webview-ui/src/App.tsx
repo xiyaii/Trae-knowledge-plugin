@@ -10,11 +10,30 @@ export default function App() {
     sendFeedback,
     feedbackError,
     clearChat,
-    openSettings,
     login,
+    uninstall,
     authenticated,
     authResult,
+    uninstalled,
   } = useVsCode();
+
+  // 插件已卸载：显示禁用界面
+  if (uninstalled) {
+    return (
+      <div className="app">
+        <div className="header">
+          <span className="header-title">Trae Ask</span>
+        </div>
+        <div className="login-screen">
+          <div className="login-icon">⊘</div>
+          <div className="login-title">插件已卸载</div>
+          <div className="login-desc">
+            插件已被卸载，请重新加载窗口以完成卸载
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 未鉴权：显示登录界面
   if (!authenticated) {
@@ -49,8 +68,8 @@ export default function App() {
           <button className="icon-btn" title="清空对话" onClick={clearChat}>
             🗑
           </button>
-          <button className="icon-btn" title="设置" onClick={openSettings}>
-            ⚙
+          <button className="icon-btn" title="卸载插件" onClick={uninstall}>
+            ✕
           </button>
         </div>
       </div>

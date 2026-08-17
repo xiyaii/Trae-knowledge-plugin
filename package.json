@@ -41,12 +41,12 @@
         "title": "Trae Ask: 打开问答"
       },
       {
-        "command": "traeAsk.configure",
-        "title": "Trae Ask: 配置"
-      },
-      {
         "command": "traeAsk.clearChat",
         "title": "Trae Ask: 清空对话"
+      },
+      {
+        "command": "traeAsk.uninstall",
+        "title": "Trae Ask: 卸载插件"
       }
     ],
     "configuration": {

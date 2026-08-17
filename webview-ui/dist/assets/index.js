@@ -6975,6 +6975,7 @@
     const [authResult, setAuthResult] = reactExports.useState(null);
     const [authenticated, setAuthenticated] = reactExports.useState(false);
     const [feedbackError, setFeedbackError] = reactExports.useState(null);
+    const [uninstalled, setUninstalled] = reactExports.useState(false);
     const vscodeRef = reactExports.useRef(null);
     reactExports.useEffect(() => {
       vscodeRef.current = acquireVsCodeApi();
@@ -6991,6 +6992,8 @@
         } else if (msg.type === "feedbackError") {
           setFeedbackError(msg.msgId);
           setTimeout(() => setFeedbackError(null), 3e3);
+        } else if (msg.type === "uninstalled") {
+          setUninstalled(true);
         }
       };
       window.addEventListener("message", handler);
@@ -7014,13 +7017,13 @@
       (_a = vscodeRef.current) == null ? void 0 : _a.postMessage({ type: "clearChat" });
       setMessages([]);
     }, []);
-    const openSettings = reactExports.useCallback(() => {
-      var _a;
-      (_a = vscodeRef.current) == null ? void 0 : _a.postMessage({ type: "openSettings" });
-    }, []);
     const login = reactExports.useCallback(() => {
       var _a;
       (_a = vscodeRef.current) == null ? void 0 : _a.postMessage({ type: "login" });
+    }, []);
+    const uninstall = reactExports.useCallback(() => {
+      var _a;
+      (_a = vscodeRef.current) == null ? void 0 : _a.postMessage({ type: "uninstall" });
     }, []);
     return {
       messages,
@@ -7029,10 +7032,11 @@
       sendFeedback,
       feedbackError,
       clearChat,
-      openSettings,
       login,
+      uninstall,
       authenticated,
-      authResult
+      authResult,
+      uninstalled
     };
   }
   function ok$1() {
@@ -19792,11 +19796,22 @@
       sendFeedback,
       feedbackError,
       clearChat,
-      openSettings,
       login,
+      uninstall,
       authenticated,
-      authResult
+      authResult,
+      uninstalled
     } = useVsCode();
+    if (uninstalled) {
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "app", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "header", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "header-title", children: "Trae Ask" }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "login-screen", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "login-icon", children: "⊘" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "login-title", children: "插件已卸载" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "login-desc", children: "插件已被卸载，请重新加载窗口以完成卸载" })
+        ] })
+      ] });
+    }
     if (!authenticated) {
       return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "app", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "header", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "header-title", children: "Trae Ask" }) }),
@@ -19814,7 +19829,7 @@
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "header-title", children: "Trae Ask" }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "header-actions", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "icon-btn", title: "清空对话", onClick: clearChat, children: "🗑" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "icon-btn", title: "设置", onClick: openSettings, children: "⚙" })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "icon-btn", title: "卸载插件", onClick: uninstall, children: "✕" })
         ] })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "messages", children: [

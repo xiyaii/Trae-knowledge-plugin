@@ -9,6 +9,7 @@ export function useVsCode() {
   const [authResult, setAuthResult] = useState<AuthResult | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [uninstalled, setUninstalled] = useState(false);
   const vscodeRef = useRef<any>(null);
 
   useEffect(() => {
@@ -27,6 +28,8 @@ export function useVsCode() {
         // ack 失败：提示用户并 3s 后自动清除
         setFeedbackError(msg.msgId);
         setTimeout(() => setFeedbackError(null), 3000);
+      } else if (msg.type === 'uninstalled') {
+        setUninstalled(true);
       }
     };
     window.addEventListener('message', handler);
@@ -53,12 +56,12 @@ export function useVsCode() {
     setMessages([]);
   }, []);
 
-  const openSettings = useCallback(() => {
-    vscodeRef.current?.postMessage({ type: 'openSettings' });
-  }, []);
-
   const login = useCallback(() => {
     vscodeRef.current?.postMessage({ type: 'login' });
+  }, []);
+
+  const uninstall = useCallback(() => {
+    vscodeRef.current?.postMessage({ type: 'uninstall' });
   }, []);
 
   return {
@@ -68,9 +71,10 @@ export function useVsCode() {
     sendFeedback,
     feedbackError,
     clearChat,
-    openSettings,
     login,
+    uninstall,
     authenticated,
     authResult,
+    uninstalled,
   };
 }
