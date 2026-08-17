@@ -2,7 +2,7 @@
   "name": "trae-ask",
   "displayName": "Trae Ask",
   "description": "Trae 企业版智能问答助手 - 快速获取答案",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "trae-cn",
   "icon": "media/icon.jpeg",
   "repository": {
@@ -12,9 +12,19 @@
   "engines": {
     "vscode": "^1.80.0"
   },
-  "categories": ["Other"],
-  "keywords": ["trae", "ask", "knowledge", "qa", "assistant"],
-  "activationEvents": ["onStartupFinished"],
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "trae",
+    "ask",
+    "knowledge",
+    "qa",
+    "assistant"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
