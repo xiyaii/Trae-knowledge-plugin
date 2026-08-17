@@ -22,7 +22,7 @@ type TrackEvent struct {
 	MsgID          string  `json:"msg_id,omitempty"`          // query / feedback 事件
 	Query          string  `json:"query,omitempty"`           // query / feedback 事件
 	Score          float64 `json:"score,omitempty"`           // 仅 query 事件
-	DocName        string  `json:"doc_name,omitempty"`        // 仅 query 事件
+	DocName        string  `json:"doc_name,omitempty"`        // query / feedback 事件
 	Platform       string  `json:"platform,omitempty"`        // darwin-arm64 / win32-x64
 	PluginVer      string  `json:"plugin_ver,omitempty"`      // 插件版本
 	Feedback       string  `json:"feedback,omitempty"`        // like | dislike（feedback 事件）

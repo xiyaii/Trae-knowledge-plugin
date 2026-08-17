@@ -36,6 +36,9 @@ export function ChatMessageView({
   }, [msg.feedback, msg.feedbackReason]);
 
   const canFeedback = msg.role === 'assistant' && !msg.error && !!msg.msgId;
+  // 已反馈后类型锁定：点赞不可修改，点踩仅支持变更原因
+  const isLocked = !!msg.feedback;
+  const isDislike = msg.feedback === 'dislike';
 
   const throttle = (fn: () => void) => {
     if (submittingRef.current) return;
@@ -46,21 +49,25 @@ export function ChatMessageView({
 
   const handleLike = () => {
     if (!msg.msgId) return;
+    // 已反馈后锁定，不允许切换类型
+    if (isLocked) return;
     throttle(() => {
-      if (msg.feedback === 'like') return;
-      onFeedback?.(msg.msgId, 'like');
+      onFeedback?.(msg.msgId!, 'like');
       setShowReason(false);
     });
   };
 
   const handleDislike = () => {
     if (!msg.msgId) return;
-    throttle(() => {
-      if (msg.feedback !== 'dislike') {
-        onFeedback?.(msg.msgId, 'dislike');
-      }
-      setShowReason(true);
-    });
+    // 已点赞后不允许切换为点踩
+    if (isLocked && !isDislike) return;
+    // 已是点踩：仅展开原因面板支持修改补充内容
+    if (!isDislike) {
+      throttle(() => {
+        onFeedback?.(msg.msgId!, 'dislike');
+      });
+    }
+    setShowReason(true);
   };
 
   const submitReason = () => {
@@ -68,7 +75,7 @@ export function ChatMessageView({
     throttle(() => {
       const reasons = [...selectedReasons];
       if (customReason.trim()) reasons.push(customReason.trim());
-      onFeedback?.(msg.msgId, 'dislike', reasons.join(';'));
+      onFeedback?.(msg.msgId!, 'dislike', reasons.join(';'));
       setShowReason(false);
     });
   };
@@ -96,20 +103,23 @@ export function ChatMessageView({
           <button
             className={`fb-btn ${msg.feedback === 'like' ? 'active-like' : ''}`}
             onClick={handleLike}
-            title="点赞"
+            disabled={isLocked}
+            title={isLocked ? '已反馈，不可修改' : '点赞'}
           >
             👍
           </button>
           <button
             className={`fb-btn ${msg.feedback === 'dislike' ? 'active-dislike' : ''}`}
             onClick={handleDislike}
-            title="点踩"
+            disabled={isLocked && !isDislike}
+            title={isLocked && !isDislike ? '已点赞，不可切换为点踩' : isDislike ? '修改点踩原因' : '点踩'}
           >
             👎
           </button>
           {msg.feedback && !showReason && (
             <span className="fb-done">
               {msg.feedback === 'like' ? '已点赞' : '已点踩'}
+              {isDislike && ' · 点击 👎 可修改原因'}
             </span>
           )}
           {hasError && (
@@ -136,7 +146,7 @@ export function ChatMessageView({
                 onChange={(e) => setCustomReason(e.target.value)}
               />
               <button className="reason-submit" onClick={submitReason}>
-                提交原因
+                {isDislike ? '更新原因' : '提交原因'}
               </button>
             </div>
           )}

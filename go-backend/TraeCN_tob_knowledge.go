@@ -255,6 +255,7 @@ type KBRequest struct {
 	Platform       string         `json:"platform,omitempty"`        // darwin-arm64 / win32-x64
 	PluginVer      string         `json:"plugin_ver,omitempty"`      // 插件版本
 	MsgID          string         `json:"msg_id,omitempty"`          // 关联的 query 请求 ID（feedback 事件用）
+	DocName        string         `json:"doc_name,omitempty"`        // 命中文档名（feedback 事件用）
 	Feedback       string         `json:"feedback,omitempty"`        // like | dislike（feedback 事件）
 	FeedbackReason string         `json:"feedback_reason,omitempty"` // 点踩原因（多选以分号拼接）
 }
@@ -374,6 +375,7 @@ func handleRequest(req KBRequest) {
 				MachineID:      req.MachineID,
 				MsgID:          req.MsgID,
 				Query:          req.Query,
+				DocName:        req.DocName,
 				Platform:       req.Platform,
 				PluginVer:      req.PluginVer,
 				Feedback:       req.Feedback,

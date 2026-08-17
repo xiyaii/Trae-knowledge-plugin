@@ -144,8 +144,18 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       }
       case 'feedback': {
         // ack 回滚机制：乐观更新 UI，Go 端 ack 失败则回滚
-        const target = this.messages.find((m) => m.msgId === msg.msgId);
-        if (!target) return;
+        const targetIdx = this.messages.findIndex((m) => m.msgId === msg.msgId);
+        if (targetIdx === -1) return;
+        const target = this.messages[targetIdx];
+
+        // 找到 assistant 消息前一条 user 消息，作为用户原始提问
+        let userQuery = '';
+        for (let i = targetIdx - 1; i >= 0; i--) {
+          if (this.messages[i].role === 'user') {
+            userQuery = this.messages[i].content?.slice(0, 500) || '';
+            break;
+          }
+        }
 
         // 保存原状态用于回滚
         const prevFeedback = target.feedback;
@@ -162,7 +172,8 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
             type: 'track',
             event: 'feedback',
             msg_id: msg.msgId,
-            query: target.content?.slice(0, 500),
+            query: userQuery,
+            doc_name: target.source?.doc_name,
             feedback: msg.feedback,
             feedback_reason: msg.reason,
             user_id: Auth.getUsertag() || undefined,
