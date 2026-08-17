@@ -7,25 +7,46 @@ export default function App() {
     messages,
     loading,
     sendQuery,
+    sendFeedback,
+    feedbackError,
     clearChat,
-    openSettings,
     login,
+    uninstall,
     authenticated,
     authResult,
+    uninstalled,
   } = useVsCode();
+
+  // 插件已卸载：显示禁用界面
+  if (uninstalled) {
+    return (
+      <div className="app">
+        <div className="header">
+          <span className="header-title">Trae Ask</span>
+        </div>
+        <div className="login-screen">
+          <div className="login-icon">⊘</div>
+          <div className="login-title">插件已卸载</div>
+          <div className="login-desc">
+            插件已被卸载，请重新加载窗口以完成卸载
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 未鉴权：显示登录界面
   if (!authenticated) {
     return (
       <div className="app">
         <div className="header">
-          <span className="header-title">知识库助手</span>
+          <span className="header-title">Trae Ask</span>
         </div>
         <div className="login-screen">
-          <div className="login-icon">🔐</div>
+          <div className="login-icon">💬</div>
           <div className="login-title">需要登录验证</div>
           <div className="login-desc">
-            请登录 Trae 企业版账号以使用知识库助手
+            请登录 Trae 企业版账号以使用 Trae Ask
           </div>
           {authResult && !authResult.ok && authResult.reason && (
             <div className="login-error">{authResult.reason}</div>
@@ -42,13 +63,13 @@ export default function App() {
   return (
     <div className="app">
       <div className="header">
-        <span className="header-title">知识库助手</span>
+        <span className="header-title">Trae Ask</span>
         <div className="header-actions">
           <button className="icon-btn" title="清空对话" onClick={clearChat}>
             🗑
           </button>
-          <button className="icon-btn" title="设置" onClick={openSettings}>
-            ⚙
+          <button className="icon-btn" title="卸载插件" onClick={uninstall}>
+            ✕
           </button>
         </div>
       </div>
@@ -61,7 +82,7 @@ export default function App() {
           </div>
         )}
         {messages.map((msg, i) => (
-          <ChatMessageView key={i} msg={msg} />
+          <ChatMessageView key={i} msg={msg} onFeedback={sendFeedback} feedbackError={feedbackError} />
         ))}
         {loading && (
           <div className="loading">
@@ -73,7 +94,7 @@ export default function App() {
         )}
       </div>
 
-      <InputBox onSend={sendQuery} disabled={loading} />
+      <InputBox onSend={sendQuery} disabled={loading || uninstalled} />
     </div>
   );
 }
