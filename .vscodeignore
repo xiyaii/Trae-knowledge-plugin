@@ -7,11 +7,15 @@ webview-ui/tsconfig.json
 webview-ui/vite.config.ts
 webview-ui/package.json
 go-backend/**
+admin-service/**
 node_modules/**
 tsconfig.json
 webpack.config.js
 .gitignore
 .apikey
+.kb_proxy_url
+.track_endpoint
+.track_token
 **/*.map
 **/*.ts
 README.md

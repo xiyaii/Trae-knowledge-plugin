@@ -25,6 +25,7 @@ export interface AuthResult {
 export class Auth {
   private static authenticated = false;
   private static result: AuthResult | null = null;
+  private static usertag: string | null = null;
 
   static isAuthenticated(): boolean {
     return this.authenticated;
@@ -32,6 +33,11 @@ export class Auth {
 
   static getResult(): AuthResult | null {
     return this.result;
+  }
+
+  /** 获取用户标识（iCubeAuthInfo://usertag 的值），用于埋点上报 */
+  static getUsertag(): string | null {
+    return this.usertag;
   }
 
   /** 获取 Trae storage.json 路径 */
@@ -131,6 +137,10 @@ export class Auth {
       productType,
     };
     this.authenticated = true;
+
+    // 读取用户标识 iCubeAuthInfo://usertag，用于埋点上报
+    this.usertag = this.readUsertag(storageData);
+
     return this.result;
   }
 
@@ -146,8 +156,9 @@ export class Auth {
   private static findProductType(obj: any): string | undefined {
     if (obj === null || obj === undefined) return undefined;
     if (typeof obj === 'object') {
-      if (obj.productType !== undefined && typeof obj.productType === 'string') {
-        return obj.productType;
+      // productType 可能为字符串或数字（如企业版订阅返回 231），统一转为字符串
+      if (obj.productType !== undefined && (typeof obj.productType === 'string' || typeof obj.productType === 'number')) {
+        return String(obj.productType);
       }
       for (const key of Object.keys(obj)) {
         const result = this.findProductType(obj[key]);
@@ -157,8 +168,22 @@ export class Auth {
     return false;
   }
 
+  /** 读取 iCubeAuthInfo://usertag 字段值作为用户标识 */
+  private static readUsertag(storageData: Record<string, any>): string | null {
+    const raw = storageData['iCubeAuthInfo://usertag'];
+    if (!raw) return null;
+    // usertag 可能是字符串或 JSON 字符串，统一转为 string
+    if (typeof raw === 'string') return raw;
+    try {
+      return JSON.stringify(raw);
+    } catch {
+      return String(raw);
+    }
+  }
+
   static reset() {
     this.authenticated = false;
     this.result = null;
+    this.usertag = null;
   }
 }

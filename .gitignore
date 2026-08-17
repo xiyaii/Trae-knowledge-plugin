@@ -6,3 +6,7 @@ bin/
 *.vsix
 .DS_Store
 .apikey
+.kb_proxy_url
+.track_endpoint
+.track_token
+admin-service/admin-service
