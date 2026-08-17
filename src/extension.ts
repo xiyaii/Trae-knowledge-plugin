@@ -46,4 +46,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
 }
 
-export function deactivate() {}
+export function deactivate() {
+  // 卸载/禁用插件时清理 Go 子进程，防止进程残留导致侧边栏仍可使用
+  GoBridge.dispose();
+}

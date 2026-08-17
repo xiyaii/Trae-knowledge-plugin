@@ -150,8 +150,25 @@ export class GoBridge {
 
   static dispose() {
     if (this.proc) {
-      this.proc.kill();
+      // 先尝试 SIGTERM 优雅退出，清理 pending 请求
+      for (const [id, cb] of this.pending) {
+        this.pending.delete(id);
+        cb({ id, type: 'error', error: '插件已停用，请求已取消' });
+      }
+      this.buffer = '';
+      // 发送 SIGTERM；若进程未退出则在 500ms 后 SIGKILL
+      const proc = this.proc;
       this.proc = undefined;
+      try {
+        proc.kill('SIGTERM');
+        setTimeout(() => {
+          if (!proc.killed) {
+            try { proc.kill('SIGKILL'); } catch {}
+          }
+        }, 500);
+      } catch {
+        // 进程可能已退出
+      }
     }
   }
 }
