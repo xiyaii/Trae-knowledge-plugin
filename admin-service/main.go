@@ -48,6 +48,7 @@ func main() {
 	dashMux.HandleFunc("/dashboard/daily", app.HandleDaily)
 	dashMux.HandleFunc("/dashboard/top-docs", app.HandleTopDocs)
 	dashMux.HandleFunc("/dashboard/low-score", app.HandleLowScore)
+	dashMux.HandleFunc("/dashboard/feedback", app.HandleFeedback)
 	mux.Handle("/dashboard/", app.SessionAuth(dashMux))
 
 	// 健康检查

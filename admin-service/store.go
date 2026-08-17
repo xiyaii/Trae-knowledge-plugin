@@ -16,16 +16,18 @@ type Store struct {
 
 // TrackEvent 埋点事件（对应插件端上报的 payload）
 type TrackEvent struct {
-	Event     string  `json:"event"`               // install | login_success | query
-	UserID    string  `json:"user_id,omitempty"`    // iCubeAuthInfo://usertag 的值
-	MachineID string  `json:"machine_id,omitempty"` // vscode.env.machineId
-	MsgID     string  `json:"msg_id,omitempty"`     // 仅 query 事件
-	Query     string  `json:"query,omitempty"`      // 仅 query 事件
-	Score     float64 `json:"score,omitempty"`      // 仅 query 事件
-	DocName   string  `json:"doc_name,omitempty"`   // 仅 query 事件
-	Platform  string  `json:"platform,omitempty"`   // darwin-arm64 / win32-x64
-	PluginVer string  `json:"plugin_ver,omitempty"` // 插件版本
-	TS        int64   `json:"ts"`                   // 毫秒时间戳
+	Event          string  `json:"event"`                     // install | login_success | query | feedback
+	UserID         string  `json:"user_id,omitempty"`         // iCubeAuthInfo://usertag 的值
+	MachineID      string  `json:"machine_id,omitempty"`      // vscode.env.machineId
+	MsgID          string  `json:"msg_id,omitempty"`          // query / feedback 事件
+	Query          string  `json:"query,omitempty"`           // query / feedback 事件
+	Score          float64 `json:"score,omitempty"`           // 仅 query 事件
+	DocName        string  `json:"doc_name,omitempty"`        // 仅 query 事件
+	Platform       string  `json:"platform,omitempty"`        // darwin-arm64 / win32-x64
+	PluginVer      string  `json:"plugin_ver,omitempty"`      // 插件版本
+	Feedback       string  `json:"feedback,omitempty"`        // like | dislike（feedback 事件）
+	FeedbackReason string  `json:"feedback_reason,omitempty"` // 点踩原因（多选以分号拼接）
+	TS             int64   `json:"ts"`                        // 毫秒时间戳
 }
 
 // NewStore 创建 PostgreSQL 连接池
@@ -68,6 +70,15 @@ func (s *Store) InitDB() error {
 		value      BIGINT NOT NULL,
 		PRIMARY KEY (stat_date, metric)
 	);
+
+	-- feedback 能力扩展（兼容已有数据，幂等）
+	ALTER TABLE events ADD COLUMN IF NOT EXISTS feedback TEXT;
+	ALTER TABLE events ADD COLUMN IF NOT EXISTS feedback_reason TEXT;
+
+	-- P0-3: feedback 去重查询的核心索引
+	-- dashboard 按 msg_id 分区取最新一条反馈，无索引时全表扫描
+	CREATE INDEX IF NOT EXISTS idx_events_feedback_msg ON events(msg_id) WHERE event_type = 'feedback';
+	CREATE INDEX IF NOT EXISTS idx_events_feedback_type ON events(event_type, feedback) WHERE feedback IS NOT NULL;
 	`
 	_, err := s.pool.Exec(context.Background(), schema)
 	return err
@@ -76,9 +87,9 @@ func (s *Store) InitDB() error {
 // InsertEvent 写入一条埋点事件
 func (s *Store) InsertEvent(e TrackEvent) error {
 	_, err := s.pool.Exec(context.Background(),
-		`INSERT INTO events (event_type, user_id, machine_id, msg_id, query_text, score, doc_name, platform, plugin_ver, ts)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-		e.Event, e.UserID, e.MachineID, e.MsgID, e.Query, e.Score, e.DocName, e.Platform, e.PluginVer, e.TS,
+		`INSERT INTO events (event_type, user_id, machine_id, msg_id, query_text, score, doc_name, platform, plugin_ver, ts, feedback, feedback_reason)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+		e.Event, e.UserID, e.MachineID, e.MsgID, e.Query, e.Score, e.DocName, e.Platform, e.PluginVer, e.TS, e.Feedback, e.FeedbackReason,
 	)
 	return err
 }

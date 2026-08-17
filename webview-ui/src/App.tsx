@@ -7,6 +7,8 @@ export default function App() {
     messages,
     loading,
     sendQuery,
+    sendFeedback,
+    feedbackError,
     clearChat,
     openSettings,
     login,
@@ -61,7 +63,7 @@ export default function App() {
           </div>
         )}
         {messages.map((msg, i) => (
-          <ChatMessageView key={i} msg={msg} />
+          <ChatMessageView key={i} msg={msg} onFeedback={sendFeedback} feedbackError={feedbackError} />
         ))}
         {loading && (
           <div className="loading">

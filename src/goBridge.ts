@@ -7,7 +7,7 @@ import { Secrets } from './secrets';
 export interface KBRequest {
   id: string;
   type: string;               // 'query' | 'track'
-  event?: string;             // 'install' | 'login_success' | 'query'
+  event?: string;             // 'install' | 'login_success' | 'query' | 'feedback'
   query?: string;
   history?: Array<{ role: string; content: string }>;
   token?: string;
@@ -15,6 +15,9 @@ export interface KBRequest {
   machine_id?: string;        // vscode.env.machineId
   platform?: string;          // darwin-arm64 / win32-x64
   plugin_ver?: string;        // 插件版本
+  msg_id?: string;            // 关联的 query 请求 ID（feedback 事件用）
+  feedback?: 'like' | 'dislike';
+  feedback_reason?: string;   // 点踩原因（多选以分号拼接）
 }
 
 export interface KBResultData {

@@ -7,6 +7,9 @@ export interface OverviewResp {
   dau: number;
   avg_score: number;
   low_score_rate: number;
+  like_count: number;
+  dislike_count: number;
+  feedback_rate: number;
 }
 
 export interface DailyItem {
@@ -27,6 +30,13 @@ export interface LowScoreItem {
   query: string;
   score: number;
   doc_name: string;
+  ts: number;
+}
+
+export interface FeedbackItem {
+  query: string;
+  doc_name: string;
+  reason: string;
   ts: number;
 }
 
@@ -62,6 +72,8 @@ export const api = {
   // 拉取更多低分问答（用于增强搜索样本）
   lowScoreMore: (from: string, to: string, limit = 100) =>
     fetchJSON<LowScoreItem[]>(`/dashboard/low-score?from=${from}&to=${to}&limit=${limit}`),
+  feedback: (from: string, to: string, limit = 50) =>
+    fetchJSON<FeedbackItem[]>(`/dashboard/feedback?from=${from}&to=${to}&limit=${limit}`),
   me: () => fetchJSON<UserInfo>(`/auth/me`),
   logout: () => { window.location.href = '/auth/logout'; },
 };

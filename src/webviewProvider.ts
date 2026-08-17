@@ -11,6 +11,9 @@ export interface ChatMessage {
     score: number;
   };
   error?: boolean;
+  msgId?: string;                    // assistant 消息关联的 query 请求 ID
+  feedback?: 'like' | 'dislike';     // 用户当前反馈状态
+  feedbackReason?: string;           // 点踩原因（多选以分号拼接）
 }
 
 export class WebviewProvider implements vscode.WebviewViewProvider {
@@ -126,6 +129,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
               role: 'assistant',
               content,
               source: d.doc_name ? { doc_name: d.doc_name, score: d.score } : undefined,
+              msgId: id,
             });
           }
         } catch (err: any) {
@@ -136,6 +140,51 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
           });
         }
         this.view.webview.postMessage({ type: 'update', messages: this.messages });
+        break;
+      }
+      case 'feedback': {
+        // ack 回滚机制：乐观更新 UI，Go 端 ack 失败则回滚
+        const target = this.messages.find((m) => m.msgId === msg.msgId);
+        if (!target) return;
+
+        // 保存原状态用于回滚
+        const prevFeedback = target.feedback;
+        const prevReason = target.feedbackReason;
+
+        // 乐观更新 UI
+        target.feedback = msg.feedback;
+        target.feedbackReason = msg.reason;
+        this.view.webview.postMessage({ type: 'update', messages: this.messages });
+
+        try {
+          const resp: KBResponse = await GoBridge.query(this.context, {
+            id: `track-feedback-${Date.now()}`,
+            type: 'track',
+            event: 'feedback',
+            msg_id: msg.msgId,
+            query: target.content?.slice(0, 500),
+            feedback: msg.feedback,
+            feedback_reason: msg.reason,
+            user_id: Auth.getUsertag() || undefined,
+            machine_id: vscode.env.machineId,
+            platform: `${process.platform}-${process.arch}`,
+            plugin_ver: (this.context.extension.packageJSON as any)?.version || 'unknown',
+          });
+
+          if (resp.type === 'error') {
+            // 回滚 UI
+            target.feedback = prevFeedback;
+            target.feedbackReason = prevReason;
+            this.view.webview.postMessage({ type: 'update', messages: this.messages });
+            this.view.webview.postMessage({ type: 'feedbackError', msgId: msg.msgId });
+          }
+        } catch {
+          // 回滚 UI
+          target.feedback = prevFeedback;
+          target.feedbackReason = prevReason;
+          this.view.webview.postMessage({ type: 'update', messages: this.messages });
+          this.view.webview.postMessage({ type: 'feedbackError', msgId: msg.msgId });
+        }
         break;
       }
       case 'clearChat':

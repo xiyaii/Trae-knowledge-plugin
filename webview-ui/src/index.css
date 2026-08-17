@@ -148,6 +148,95 @@ body {
   gap: 4px;
 }
 
+/* 反馈栏 */
+.feedback-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+.fb-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0.6;
+  transition: opacity 0.15s, background 0.15s;
+}
+.fb-btn:hover {
+  opacity: 1;
+  background: var(--input-bg);
+}
+.fb-btn.active-like {
+  opacity: 1;
+}
+.fb-btn.active-dislike {
+  opacity: 1;
+}
+.fb-done {
+  font-size: 11px;
+  color: var(--muted);
+}
+.fb-error {
+  font-size: 11px;
+  color: var(--error);
+}
+
+/* 点踩原因面板 */
+.reason-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 8px;
+  background: var(--input-bg);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.reason-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.reason-chip {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+}
+.reason-chip input {
+  margin: 0;
+}
+.reason-input {
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.reason-input:focus {
+  outline: none;
+  border-color: var(--link);
+}
+.reason-submit {
+  align-self: flex-start;
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.reason-submit:hover {
+  background: var(--btn-hover);
+}
+
 .loading {
   display: flex;
   align-items: center;

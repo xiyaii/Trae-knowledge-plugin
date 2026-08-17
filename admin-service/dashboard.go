@@ -15,6 +15,9 @@ type OverviewResp struct {
 	DAU          int64   `json:"dau"`            // 今日活跃用户数
 	AvgScore     float64 `json:"avg_score"`      // 平均检索得分
 	LowScoreRate float64 `json:"low_score_rate"` // 低分占比（score < 0.3）
+	LikeCount    int64   `json:"like_count"`     // 点赞数（按 msg_id 去重取最新）
+	DislikeCount int64   `json:"dislike_count"`  // 点踩数（按 msg_id 去重取最新）
+	FeedbackRate float64 `json:"feedback_rate"`  // 点踩率 = dislike / (like+dislike)
 }
 
 // HandleOverview GET /dashboard/overview?from=&to=
@@ -46,6 +49,22 @@ func (app *App) HandleOverview(w http.ResponseWriter, r *http.Request) {
 	app.store.pool.QueryRow(ctx,
 		`SELECT COALESCE(AVG(score), 0), COALESCE(SUM(CASE WHEN score < 0.3 THEN 1 ELSE 0 END)::float8 / NULLIF(COUNT(*), 0), 0)
 		 FROM events WHERE event_type='query' AND ts >= $1 AND ts < $2`, from, to).Scan(&resp.AvgScore, &resp.LowScoreRate)
+
+	// 反馈统计：同一 msg_id 允许反复修改，取最新一条
+	// ORDER BY ts DESC, id DESC 确保同毫秒时按入库顺序兜底
+	app.store.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FILTER (WHERE fb='like'),
+		        COUNT(*) FILTER (WHERE fb='dislike')
+		 FROM (
+		   SELECT msg_id, feedback AS fb,
+		          ROW_NUMBER() OVER (PARTITION BY msg_id ORDER BY ts DESC, id DESC) AS rn
+		   FROM events
+		   WHERE event_type='feedback' AND ts >= $1 AND ts < $2
+		 ) t WHERE rn = 1`, from, to).Scan(&resp.LikeCount, &resp.DislikeCount)
+	totalFb := resp.LikeCount + resp.DislikeCount
+	if totalFb > 0 {
+		resp.FeedbackRate = float64(resp.DislikeCount) / float64(totalFb)
+	}
 
 	writeJSON(w, resp)
 }
@@ -176,6 +195,48 @@ func (app *App) HandleLowScore(w http.ResponseWriter, r *http.Request) {
 func writeJSON(w http.ResponseWriter, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(v)
+}
+
+// FeedbackItem 点踩明细单项
+type FeedbackItem struct {
+	Query   string `json:"query"`
+	DocName string `json:"doc_name"`
+	Reason  string `json:"reason"`
+	TS      int64  `json:"ts"`
+}
+
+// HandleFeedback GET /dashboard/feedback?from=&to=&limit=50
+// 返回点踩明细列表（按 msg_id 取最新一条去重）
+// 用于运营根据点踩原因调整知识库内容
+func (app *App) HandleFeedback(w http.ResponseWriter, r *http.Request) {
+	from, to := parseTimeRange(r)
+	limit := parseIntDefault(r, "limit", 50)
+	ctx := r.Context()
+
+	rows, err := app.store.pool.Query(ctx,
+		`SELECT query_text, doc_name, feedback_reason, ts
+		 FROM (
+		   SELECT query_text, doc_name, feedback_reason, ts,
+		          ROW_NUMBER() OVER (PARTITION BY msg_id ORDER BY ts DESC, id DESC) AS rn
+		   FROM events
+		   WHERE event_type='feedback' AND feedback='dislike' AND ts >= $1 AND ts < $2
+		 ) t WHERE rn = 1
+		 ORDER BY ts DESC LIMIT $3`, from, to, limit)
+	if err != nil {
+		http.Error(w, "Query failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	items := []FeedbackItem{}
+	for rows.Next() {
+		var it FeedbackItem
+		if err := rows.Scan(&it.Query, &it.DocName, &it.Reason, &it.TS); err != nil {
+			continue
+		}
+		items = append(items, it)
+	}
+	writeJSON(w, items)
 }
 
 // parseTimeRange 解析 from/to 查询参数，默认返回最近 7 天

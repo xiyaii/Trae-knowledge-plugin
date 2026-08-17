@@ -243,17 +243,20 @@ func CleanContent(content string) string {
 
 // KBRequest 扩展端发来的请求
 type KBRequest struct {
-	ID        string         `json:"id"`                   // 请求 ID，用于多路复用匹配
-	Type      string         `json:"type"`                 // "query" | "track"
-	Event     string         `json:"event,omitempty"`      // track 事件类型：install | login_success | query
-	Query     string         `json:"query,omitempty"`      // 用户问题
-	Stream    bool           `json:"stream"`               // 是否流式（暂未启用，预留）
-	History   []MessageParam `json:"history"`              // 多轮对话历史
-	Token     string         `json:"token,omitempty"`      // 用户登录态（预留，暂不校验）
-	UserID    string         `json:"user_id,omitempty"`    // 用户标识（iCubeAuthInfo://usertag）
-	MachineID string         `json:"machine_id,omitempty"` // 设备标识（vscode.env.machineId）
-	Platform  string         `json:"platform,omitempty"`   // darwin-arm64 / win32-x64
-	PluginVer string         `json:"plugin_ver,omitempty"` // 插件版本
+	ID             string         `json:"id"`                        // 请求 ID，用于多路复用匹配
+	Type           string         `json:"type"`                      // "query" | "track"
+	Event          string         `json:"event,omitempty"`           // track 事件类型：install | login_success | query | feedback
+	Query          string         `json:"query,omitempty"`           // 用户问题
+	Stream         bool           `json:"stream"`                    // 是否流式（暂未启用，预留）
+	History        []MessageParam `json:"history"`                   // 多轮对话历史
+	Token          string         `json:"token,omitempty"`           // 用户登录态（预留，暂不校验）
+	UserID         string         `json:"user_id,omitempty"`         // 用户标识（iCubeAuthInfo://usertag）
+	MachineID      string         `json:"machine_id,omitempty"`      // 设备标识（vscode.env.machineId）
+	Platform       string         `json:"platform,omitempty"`        // darwin-arm64 / win32-x64
+	PluginVer      string         `json:"plugin_ver,omitempty"`      // 插件版本
+	MsgID          string         `json:"msg_id,omitempty"`          // 关联的 query 请求 ID（feedback 事件用）
+	Feedback       string         `json:"feedback,omitempty"`        // like | dislike（feedback 事件）
+	FeedbackReason string         `json:"feedback_reason,omitempty"` // 点踩原因（多选以分号拼接）
 }
 
 // KBResponse 返回给扩展端的响应
@@ -298,24 +301,29 @@ func emitResponse(resp KBResponse) {
 	emitMu.Unlock()
 }
 
-// concurrencySem 限制并发请求数，避免无界 goroutine 耗尽资源
-// 客户端子进程场景并发量通常 <10，16 足够应对突发流量
-var concurrencySem = make(chan struct{}, 16)
+// querySem / trackSem 分别限制 query 和 track 的并发数
+// 分离设计：避免 feedback 等高频 track 请求打满信号量后阻塞 query 问答
+// - query: 知识库检索，单次 5-15s，16 足够
+// - track: 埋点上报，单次 <100ms（3s 超时兜底），32 应对突发反馈
+var querySem = make(chan struct{}, 16)
+var trackSem = make(chan struct{}, 32)
 
 // ===================== 埋点上报 =====================
 
 // TrackPayload 上报到运营服务端的 payload
 type TrackPayload struct {
-	Event     string  `json:"event"`
-	UserID    string  `json:"user_id,omitempty"`
-	MachineID string  `json:"machine_id,omitempty"`
-	MsgID     string  `json:"msg_id,omitempty"`
-	Query     string  `json:"query,omitempty"`
-	Score     float64 `json:"score,omitempty"`
-	DocName   string  `json:"doc_name,omitempty"`
-	Platform  string  `json:"platform,omitempty"`
-	PluginVer string  `json:"plugin_ver,omitempty"`
-	TS        int64   `json:"ts"`
+	Event          string  `json:"event"`
+	UserID         string  `json:"user_id,omitempty"`
+	MachineID      string  `json:"machine_id,omitempty"`
+	MsgID          string  `json:"msg_id,omitempty"`
+	Query          string  `json:"query,omitempty"`
+	Score          float64 `json:"score,omitempty"`
+	DocName        string  `json:"doc_name,omitempty"`
+	Platform       string  `json:"platform,omitempty"`
+	PluginVer      string  `json:"plugin_ver,omitempty"`
+	Feedback       string  `json:"feedback,omitempty"`
+	FeedbackReason string  `json:"feedback_reason,omitempty"`
+	TS             int64   `json:"ts"`
 }
 
 // reportTrack 同步上报埋点事件到运营服务端
@@ -356,16 +364,21 @@ func reportTrack(payload TrackPayload) {
 // handleRequest 处理单个请求
 func handleRequest(req KBRequest) {
 	// track 类型：埋点上报，不经过鉴权（install 时用户可能未登录）
+	// 先 emitResponse 解除 stdin 阻塞，再同步 reportTrack
 	if req.Type == "track" {
 		emitResponse(KBResponse{ID: req.ID, Type: "result", Data: map[string]interface{}{"ok": true}})
 		if req.Event != "" {
 			reportTrack(TrackPayload{
-				Event:     req.Event,
-				UserID:    req.UserID,
-				MachineID: req.MachineID,
-				Platform:  req.Platform,
-				PluginVer: req.PluginVer,
-				TS:        time.Now().UnixMilli(),
+				Event:          req.Event,
+				UserID:         req.UserID,
+				MachineID:      req.MachineID,
+				MsgID:          req.MsgID,
+				Query:          req.Query,
+				Platform:       req.Platform,
+				PluginVer:      req.PluginVer,
+				Feedback:       req.Feedback,
+				FeedbackReason: req.FeedbackReason,
+				TS:             time.Now().UnixMilli(),
 			})
 		}
 		return
@@ -481,13 +494,16 @@ func runServer() error {
 			})
 			continue
 		}
-		// 并发处理：避免单个慢请求阻塞后续请求
-		// 信号量满时阻塞在此，实现背压（backpressure）
-		concurrencySem <- struct{}{}
-		go func(r KBRequest) {
-			defer func() { <-concurrencySem }()
+		// 并发处理：track 和 query 分离信号量，避免 track 拖慢 query
+		sem := &querySem
+		if req.Type == "track" {
+			sem = &trackSem
+		}
+		*sem <- struct{}{}
+		go func(r KBRequest, s *chan struct{}) {
+			defer func() { <-*s }()
 			handleRequest(r)
-		}(req)
+		}(req, sem)
 	}
 	return scanner.Err()
 }

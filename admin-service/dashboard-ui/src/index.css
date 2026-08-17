@@ -1004,6 +1004,41 @@ html, body {
 }
 
 /* ============================================================
+ * Feedback Table（反馈分析明细表）
+ * ============================================================ */
+.feedback-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.feedback-table th,
+.feedback-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.feedback-table th {
+  color: var(--text-3);
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.feedback-table tbody tr:hover {
+  background: var(--fill-2);
+}
+.feedback-table td:nth-child(2) {
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.feedback-table td:nth-child(4) {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+/* ============================================================
  * Footer
  * ============================================================ */
 .footer {

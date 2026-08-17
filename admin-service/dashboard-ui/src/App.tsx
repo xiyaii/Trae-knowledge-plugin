@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { api, OverviewResp, DailyItem, TopDocItem, LowScoreItem, UserInfo } from './api';
+import { api, OverviewResp, DailyItem, TopDocItem, LowScoreItem, FeedbackItem, UserInfo } from './api';
 import { KpiCard } from './components/KpiCard';
 import { DailyChart } from './components/DailyChart';
 import { TopDocsChart } from './components/TopDocsChart';
@@ -31,6 +31,7 @@ export default function App() {
   const [daily, setDaily] = useState<DailyItem[]>([]);
   const [topDocs, setTopDocs] = useState<TopDocItem[]>([]);
   const [lowScore, setLowScore] = useState<LowScoreItem[]>([]);
+  const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -47,11 +48,12 @@ export default function App() {
     setError(null);
     try {
       const prevRange = getPrevRange(from, to);
-      const [ov, dy, td, ls, prevOv] = await Promise.all([
+      const [ov, dy, td, ls, fb, prevOv] = await Promise.all([
         api.overview(from, to),
         api.daily(from, to),
         api.topDocs(from, to, 15),
         api.lowScoreMore(from, to, 100),
+        api.feedback(from, to, 100),
         api.overview(prevRange.from, prevRange.to).catch(() => null),
       ]);
       setOverview(ov);
@@ -59,6 +61,7 @@ export default function App() {
       setDaily(dy);
       setTopDocs(td);
       setLowScore(ls);
+      setFeedback(fb);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -295,6 +298,76 @@ export default function App() {
           )}
         </section>
       </div>
+
+      {/* 反馈分析 */}
+      <section className="section">
+        <div className="section-header">
+          <h2>反馈分析</h2>
+          <span className="section-hint">
+            点赞/点踩统计与点踩明细，辅助知识库内容优化（同消息反复修改取最新）
+          </span>
+        </div>
+        {initialLoading ? (
+          <TableSkeleton rows={6} />
+        ) : overview ? (
+          <>
+            <div className="kpi-row" style={{ marginBottom: 16 }}>
+              <KpiCard
+                index={0}
+                label="点赞数"
+                value={overview.like_count}
+                sub={`${from} ~ ${to}`}
+                sparkColor="var(--success)"
+              />
+              <KpiCard
+                index={1}
+                label="点踩数"
+                value={overview.dislike_count}
+                sub={`${from} ~ ${to}`}
+                sparkColor="var(--danger)"
+              />
+              <KpiCard
+                index={2}
+                label="点踩率"
+                value={overview.feedback_rate * 100}
+                decimals={1}
+                suffix="%"
+                sub="dislike / (like + dislike)"
+                sparkColor="var(--warning)"
+                invertDelta
+              />
+            </div>
+            <table className="feedback-table">
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>问题</th>
+                  <th>命中文档</th>
+                  <th>点踩原因</th>
+                </tr>
+              </thead>
+              <tbody>
+                {feedback.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: 'center', padding: 24 }}>
+                      暂无点踩数据
+                    </td>
+                  </tr>
+                ) : (
+                  feedback.map((it, i) => (
+                    <tr key={i}>
+                      <td>{new Date(it.ts).toLocaleString('zh-CN')}</td>
+                      <td>{it.query}</td>
+                      <td>{it.doc_name || '-'}</td>
+                      <td>{it.reason || '-'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </>
+        ) : null}
+      </section>
 
       <footer className="footer">
         <span>Trae 知识库助手运营看板 · 数据更新于 {new Date().toLocaleString('zh-CN')}</span>
