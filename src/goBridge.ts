@@ -93,7 +93,7 @@ export class GoBridge {
       env.TRAE_USER_TOKEN = token;
     }
 
-    this.proc = spawn(binaryPath, [], { env });
+    this.proc = spawn(binaryPath, [], { env, windowsHide: true });
 
     this.proc.stdout.setEncoding('utf-8');
     this.proc.stdout.on('data', (chunk: string) => {
