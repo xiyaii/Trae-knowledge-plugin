@@ -1,0 +1,57 @@
+src/goBridge.ts
+  s_311c90bee77421::t_866234d7f40608 96
+admin-service/kb_proxy.go
+  s_3458752390b8b1::t_ea0140bc8e0f22 18
+package.json
+  s_311c90bee77421::t_2b1f30d4246ab2 86-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "59e7f31dffaca174061cde22b0d4b3f8cd25f217",
+  "prompts": {},
+  "sessions": {
+    "s_311c90bee77421": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a86c243e243b733cf433505",
+        "model": "glm-5.2"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "tool_type": "builtin",
+        "runtime_client": "trae-tob-git-ai",
+        "client_type": "ide",
+        "external_session_id": "6a86c243e243b733cf433505",
+        "edit_kind": "file_edit",
+        "tool_use_id": "6a86c329e243b733cf433570",
+        "source_scene": "agent",
+        "dedupe_key": "6a86c243e243b733cf433505:6a86c329e243b733cf433570:afterEdit:bb390560",
+        "session_id": "6a86c243e243b733cf433505",
+        "operation_id": "6a86c329e243b733cf433570"
+      }
+    },
+    "s_3458752390b8b1": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a86b5d1be4c7fccd2c8b22f",
+        "model": "glm-5.2"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "source_scene": "agent",
+        "runtime_client": "trae-tob-git-ai",
+        "edit_kind": "file_edit",
+        "external_session_id": "6a86b5d1be4c7fccd2c8b22f",
+        "session_id": "6a86b5d1be4c7fccd2c8b22f",
+        "operation_id": "6a86bec1be4c7fccd2c8b25b",
+        "client_type": "ide",
+        "tool_use_id": "6a86bec1be4c7fccd2c8b25b",
+        "dedupe_key": "6a86b5d1be4c7fccd2c8b22f:6a86bec1be4c7fccd2c8b25b:afterEdit:45f82413",
+        "tool_id": "icube:applyChatSnapshotPatch",
+        "tool_type": "builtin"
+      }
+    }
+  }
+}
