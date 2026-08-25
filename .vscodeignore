@@ -19,3 +19,6 @@ webpack.config.js
 **/*.map
 **/*.ts
 README.md
+scripts/**
+.tos_base_url
+latest.json

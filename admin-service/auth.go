@@ -27,12 +27,17 @@ const (
 
 // Session 内存会话
 type Session struct {
+	// mu 保护 token 相关字段（AccessToken/RefreshToken/TokenExpireAt/refreshing），
+	// 这些字段会被后台 refreshToken goroutine 并发读写；UserID/Name/ExpireAt
+	// 创建后不变，无需加锁
+	mu            sync.Mutex
 	UserID        string
 	Name          string
 	AccessToken   string
 	RefreshToken  string
 	TokenExpireAt time.Time
 	ExpireAt      time.Time
+	refreshing    bool // 是否有刷新 goroutine 进行中，防止并发重复刷新
 }
 
 // SessionStore 内存 session 存储（单机够用，重启失效需重新登录）
@@ -72,7 +77,12 @@ func (s *SessionStore) Delete(sid string) {
 
 // handleLogin 跳转飞书授权页
 func (app *App) handleLogin(w http.ResponseWriter, r *http.Request) {
-	state := randHex(16)
+	state, err := randHex(16)
+	if err != nil {
+		log.Printf("生成 OAuth state 失败: %v", err)
+		http.Error(w, "failed to generate state", http.StatusInternalServerError)
+		return
+	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     stateCookieName,
 		Value:    state,
@@ -152,7 +162,12 @@ func (app *App) handleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 第三步：生成 session
-	sid := randHex(32)
+	sid, err := randHex(32)
+	if err != nil {
+		log.Printf("生成 session id 失败: %v", err)
+		http.Error(w, "failed to generate session", http.StatusInternalServerError)
+		return
+	}
 	now := time.Now()
 	app.sessions.Set(sid, &Session{
 		UserID:        userID,
@@ -211,8 +226,9 @@ func (app *App) SessionAuth(next http.Handler) http.Handler {
 			http.Redirect(w, r, "/auth/login", http.StatusFound)
 			return
 		}
-		// 异步刷新 token（临近过期时）
-		if sess.RefreshToken != "" && time.Until(sess.TokenExpireAt) < 10*time.Minute {
+		// 异步刷新 token（临近过期时）；tryRefresh 原子判定并去重，
+		// 避免并发请求重复触发刷新（飞书 refresh_token 一次性轮换，并发会互相失效）
+		if app.tryRefresh(sess) {
 			go app.refreshToken(sess)
 		}
 		next.ServeHTTP(w, r)
@@ -228,15 +244,36 @@ func (app *App) sessionFromRequest(r *http.Request) *Session {
 	return app.sessions.Get(c.Value)
 }
 
+// tryRefresh 原子判定是否需要刷新：临近过期（10min 内）且当前无刷新进行中。
+// 返回 true 时已置 refreshing 标志，调用方必须执行 refreshToken（其负责清除标志）
+func (app *App) tryRefresh(sess *Session) bool {
+	sess.mu.Lock()
+	defer sess.mu.Unlock()
+	if sess.refreshing || sess.RefreshToken == "" || time.Until(sess.TokenExpireAt) >= 10*time.Minute {
+		return false
+	}
+	sess.refreshing = true
+	return true
+}
+
 // refreshToken 后台刷新 user_access_token
+// HTTP 调用不持锁（最长 10s，持锁会阻塞所有读该 session 的请求）
 func (app *App) refreshToken(sess *Session) {
+	sess.mu.Lock()
+	rt := sess.RefreshToken
+	sess.mu.Unlock()
+
 	body, _ := json.Marshal(map[string]string{
 		"grant_type":    "refresh_token",
 		"client_id":     app.cfg.LarkAppID,
 		"client_secret": app.cfg.LarkAppSecret,
-		"refresh_token": sess.RefreshToken,
+		"refresh_token": rt,
 	})
 	tr, err := doJSON(larkRefreshURL, body)
+
+	sess.mu.Lock()
+	defer sess.mu.Unlock()
+	sess.refreshing = false
 	if err != nil {
 		log.Printf("token 刷新失败: %v", err)
 		return
@@ -253,9 +290,13 @@ func (app *App) refreshToken(sess *Session) {
 	log.Printf("token 刷新成功: user_id=%s", sess.UserID)
 }
 
+// authHTTPClient 飞书 OAuth 接口专用 client，带超时防止上游卡死导致
+// 请求链路挂起或后台刷新 goroutine 无限堆积
+var authHTTPClient = &http.Client{Timeout: 10 * time.Second}
+
 // doJSON 发送 JSON POST 请求并解析响应
 func doJSON(u string, body []byte) (map[string]interface{}, error) {
-	resp, err := http.Post(u, "application/json; charset=utf-8", bytes.NewReader(body))
+	resp, err := authHTTPClient.Post(u, "application/json; charset=utf-8", bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +319,7 @@ func getUserInfo(accessToken string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := authHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -301,10 +342,12 @@ func getUserInfo(accessToken string) (map[string]interface{}, error) {
 }
 
 // randHex 生成随机 hex 字符串
-func randHex(n int) string {
+func randHex(n int) (string, error) {
 	b := make([]byte, n)
-	rand.Read(b)
-	return hex.EncodeToString(b)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
 }
 
 // containsUser 检查白名单（逗号分隔）

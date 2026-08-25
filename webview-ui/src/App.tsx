@@ -11,7 +11,6 @@ export default function App() {
     feedbackError,
     clearChat,
     login,
-    uninstall,
     authenticated,
     authResult,
     uninstalled,
@@ -22,7 +21,7 @@ export default function App() {
     return (
       <div className="app">
         <div className="header">
-          <span className="header-title">Trae Ask</span>
+          <span className="header-title">AskTrae</span>
         </div>
         <div className="login-screen">
           <div className="login-icon">⊘</div>
@@ -40,13 +39,13 @@ export default function App() {
     return (
       <div className="app">
         <div className="header">
-          <span className="header-title">Trae Ask</span>
+          <span className="header-title">AskTrae</span>
         </div>
         <div className="login-screen">
           <div className="login-icon">💬</div>
           <div className="login-title">需要登录验证</div>
           <div className="login-desc">
-            请登录 Trae 企业版账号以使用 Trae Ask
+            请登录 Trae 企业版账号以使用 AskTrae
           </div>
           {authResult && !authResult.ok && authResult.reason && (
             <div className="login-error">{authResult.reason}</div>
@@ -63,13 +62,10 @@ export default function App() {
   return (
     <div className="app">
       <div className="header">
-        <span className="header-title">Trae Ask</span>
+        <span className="header-title">AskTrae</span>
         <div className="header-actions">
           <button className="icon-btn" title="清空对话" onClick={clearChat}>
             🗑
-          </button>
-          <button className="icon-btn" title="卸载插件" onClick={uninstall}>
-            ✕
           </button>
         </div>
       </div>
