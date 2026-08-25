@@ -11,4 +11,5 @@ bin/
 .track_token
 .tos_base_url
 latest.json
+admin-service/admin.service
 admin-service/admin-service

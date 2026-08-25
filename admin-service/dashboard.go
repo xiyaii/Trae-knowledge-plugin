@@ -58,8 +58,11 @@ func (app *App) HandleOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 今日 DAU
-	todayStart := time.Now().Truncate(24 * time.Hour).UnixMilli()
+	// 今日 DAU：按本地时区零点计算（Truncate 是 UTC 对齐的绝对截断，
+	// 东八区下会漏统计每日 0-8 点的活跃用户；同时与 HandleDaily 的
+	// DATE() 分组、聚合任务的本地 00:05 保持同一日界口径）
+	now := time.Now()
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local).UnixMilli()
 	if !scanOr500(w, "dau", app.store.pool.QueryRow(ctx,
 		`SELECT COUNT(DISTINCT user_id) FROM events WHERE event_type='query' AND ts >= $1`, todayStart).Scan(&resp.DAU)) {
 		return
