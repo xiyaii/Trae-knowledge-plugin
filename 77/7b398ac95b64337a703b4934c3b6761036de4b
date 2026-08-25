@@ -1,0 +1,12 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "777b398ac95b64337a703b4934c3b6761036de4b",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  }
+}
