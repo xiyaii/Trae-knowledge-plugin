@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -20,6 +21,17 @@ type OverviewResp struct {
 	FeedbackRate float64 `json:"feedback_rate"`  // 点踩率 = dislike / (like+dislike)
 }
 
+// scanOr500 QueryRow().Scan() 错误统一处理：记录日志并写 500 响应。
+// 返回 false 表示已写响应，调用方应立即 return
+func scanOr500(w http.ResponseWriter, where string, err error) bool {
+	if err == nil {
+		return true
+	}
+	log.Printf("dashboard %s 查询失败: %v", where, err)
+	http.Error(w, "Query failed: "+err.Error(), http.StatusInternalServerError)
+	return false
+}
+
 // HandleOverview GET /dashboard/overview?from=&to=
 // 返回时间范围内的总览数据
 func (app *App) HandleOverview(w http.ResponseWriter, r *http.Request) {
@@ -29,30 +41,40 @@ func (app *App) HandleOverview(w http.ResponseWriter, r *http.Request) {
 	var resp OverviewResp
 
 	// 累计安装设备数
-	app.store.pool.QueryRow(ctx,
-		`SELECT COUNT(DISTINCT machine_id) FROM events WHERE event_type='install'`).Scan(&resp.InstallCount)
+	if !scanOr500(w, "install_count", app.store.pool.QueryRow(ctx,
+		`SELECT COUNT(DISTINCT machine_id) FROM events WHERE event_type='install'`).Scan(&resp.InstallCount)) {
+		return
+	}
 
 	// 累计登录用户数
-	app.store.pool.QueryRow(ctx,
-		`SELECT COUNT(DISTINCT user_id) FROM events WHERE event_type='login_success'`).Scan(&resp.LoginCount)
+	if !scanOr500(w, "login_count", app.store.pool.QueryRow(ctx,
+		`SELECT COUNT(DISTINCT user_id) FROM events WHERE event_type='login_success'`).Scan(&resp.LoginCount)) {
+		return
+	}
 
 	// 时间范围内的问答次数
-	app.store.pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM events WHERE event_type='query' AND ts >= $1 AND ts < $2`, from, to).Scan(&resp.QueryCount)
+	if !scanOr500(w, "query_count", app.store.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM events WHERE event_type='query' AND ts >= $1 AND ts < $2`, from, to).Scan(&resp.QueryCount)) {
+		return
+	}
 
 	// 今日 DAU
 	todayStart := time.Now().Truncate(24 * time.Hour).UnixMilli()
-	app.store.pool.QueryRow(ctx,
-		`SELECT COUNT(DISTINCT user_id) FROM events WHERE event_type='query' AND ts >= $1`, todayStart).Scan(&resp.DAU)
+	if !scanOr500(w, "dau", app.store.pool.QueryRow(ctx,
+		`SELECT COUNT(DISTINCT user_id) FROM events WHERE event_type='query' AND ts >= $1`, todayStart).Scan(&resp.DAU)) {
+		return
+	}
 
 	// 平均得分 & 低分占比
-	app.store.pool.QueryRow(ctx,
+	if !scanOr500(w, "avg_score", app.store.pool.QueryRow(ctx,
 		`SELECT COALESCE(AVG(score), 0), COALESCE(SUM(CASE WHEN score < 0.3 THEN 1 ELSE 0 END)::float8 / NULLIF(COUNT(*), 0), 0)
-		 FROM events WHERE event_type='query' AND ts >= $1 AND ts < $2`, from, to).Scan(&resp.AvgScore, &resp.LowScoreRate)
+		 FROM events WHERE event_type='query' AND ts >= $1 AND ts < $2`, from, to).Scan(&resp.AvgScore, &resp.LowScoreRate)) {
+		return
+	}
 
 	// 反馈统计：同一 msg_id 允许反复修改，取最新一条
 	// ORDER BY ts DESC, id DESC 确保同毫秒时按入库顺序兜底
-	app.store.pool.QueryRow(ctx,
+	if !scanOr500(w, "feedback", app.store.pool.QueryRow(ctx,
 		`SELECT COUNT(*) FILTER (WHERE fb='like'),
 		        COUNT(*) FILTER (WHERE fb='dislike')
 		 FROM (
@@ -60,7 +82,9 @@ func (app *App) HandleOverview(w http.ResponseWriter, r *http.Request) {
 		          ROW_NUMBER() OVER (PARTITION BY msg_id ORDER BY ts DESC, id DESC) AS rn
 		   FROM events
 		   WHERE event_type='feedback' AND ts >= $1 AND ts < $2
-		 ) t WHERE rn = 1`, from, to).Scan(&resp.LikeCount, &resp.DislikeCount)
+		 ) t WHERE rn = 1`, from, to).Scan(&resp.LikeCount, &resp.DislikeCount)) {
+		return
+	}
 	totalFb := resp.LikeCount + resp.DislikeCount
 	if totalFb > 0 {
 		resp.FeedbackRate = float64(resp.DislikeCount) / float64(totalFb)
@@ -215,7 +239,7 @@ func (app *App) HandleFeedback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	rows, err := app.store.pool.Query(ctx,
-		`SELECT query_text, answer, doc_name, feedback_reason, ts
+		`SELECT query_text, COALESCE(answer, ''), doc_name, COALESCE(feedback_reason, ''), ts
 		 FROM (
 		   SELECT query_text, answer, doc_name, feedback_reason, ts,
 		          ROW_NUMBER() OVER (PARTITION BY msg_id ORDER BY ts DESC, id DESC) AS rn
@@ -233,6 +257,8 @@ func (app *App) HandleFeedback(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var it FeedbackItem
 		if err := rows.Scan(&it.Query, &it.Answer, &it.DocName, &it.Reason, &it.TS); err != nil {
+			// 记录日志便于排查，不静默丢弃（answer/feedback_reason 等列历史数据可能为 NULL）
+			log.Printf("feedback 明细行扫描失败: %v", err)
 			continue
 		}
 		items = append(items, it)

@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as http from 'http';
 import * as https from 'https';
 
 // 后台自动检查的间隔与延迟（毫秒）
@@ -37,10 +36,29 @@ function isNewerVersion(remote: string, local: string): boolean {
   return false;
 }
 
+// 安全校验：更新链路（清单与 VSIX）仅允许 https。
+// 明文 http 可被中间人篡改清单或注入恶意 VSIX，属于供应链攻击入口。
+function assertHttpsUrl(u: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(u);
+  } catch {
+    throw new Error(`无效的更新地址: ${u}`);
+  }
+  if (parsed.protocol !== 'https:') {
+    throw new Error(`更新地址必须为 https: ${u}`);
+  }
+}
+
 function fetchText(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const mod = url.startsWith('https') ? https : http;
-    const req = mod.get(url, { timeout: 15000 }, (res) => {
+    try {
+      assertHttpsUrl(url);
+    } catch (err) {
+      reject(err);
+      return;
+    }
+    const req = https.get(url, { timeout: 15000 }, (res) => {
       if (res.statusCode !== 200) {
         res.resume();
         reject(new Error(`HTTP ${res.statusCode}`));
@@ -56,11 +74,16 @@ function fetchText(url: string): Promise<string> {
   });
 }
 
-// 下载 VSIX 到本地（支持 30x 重定向，兼容 TOS/CDN 跳转）
+// 下载 VSIX 到本地（支持 30x 重定向，兼容 TOS/CDN 跳转；重定向目标递归校验，禁止降级 http）
 function downloadFile(url: string, dest: string, redirects = 5): Promise<void> {
   return new Promise((resolve, reject) => {
-    const mod = url.startsWith('https') ? https : http;
-    const req = mod.get(url, { timeout: 120000 }, (res) => {
+    try {
+      assertHttpsUrl(url);
+    } catch (err) {
+      reject(err);
+      return;
+    }
+    const req = https.get(url, { timeout: 120000 }, (res) => {
       const status = res.statusCode || 0;
       if (status >= 300 && status < 400 && res.headers.location) {
         res.resume();
@@ -103,6 +126,8 @@ export async function checkForUpdates(
   if (!manifest?.version || !manifest?.url) {
     throw new Error('更新清单格式错误');
   }
+  // 清单声明的下载地址必须为 https，明文地址可能在提示用户前即被拦截
+  assertHttpsUrl(manifest.url);
 
   if (!isNewerVersion(manifest.version, current)) {
     if (!silent) {
