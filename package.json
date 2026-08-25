@@ -75,7 +75,7 @@
         "traeAsk.updateManifestUrl": {
           "type": "string",
           "default": "https://ask-trae.tos-cn-beijing.volces.com/plugin/latest.json",
-          "description": "更新清单地址（latest.json），用于插件自动更新。留空则禁用自动更新。"
+          "description": "更新清单地址（latest.json），用于插件自动更新。留空时使用内置地址。"
         }
       }
     }
