@@ -53,6 +53,10 @@
       {
         "command": "traeAsk.clearChat",
         "title": "AskTrae: 清空对话"
+      },
+      {
+        "command": "traeAsk.checkUpdate",
+        "title": "AskTrae: 检查更新"
       }
     ],
     "configuration": {
@@ -70,7 +74,7 @@
         },
         "traeAsk.updateManifestUrl": {
           "type": "string",
-          "default": "",
+          "default": "https://ask-trae.tos-cn-beijing.volces.com/plugin/latest.json",
           "description": "更新清单地址（latest.json），用于插件自动更新。留空则禁用自动更新。"
         }
       }
