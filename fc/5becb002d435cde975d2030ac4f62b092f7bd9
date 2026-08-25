@@ -1,0 +1,57 @@
+admin-service/auth.go
+  s_e3390f6b130eda::t_266a5a0492b3be 80-85
+  s_e3390f6b130eda::t_208aaefe51dc18 247-258,260,262,264-265,273-276
+  s_e3390f6b130eda::t_30950943572f2c 263,270
+  s_e3390f6b130eda::t_b508586c0cdb96 293-296,299
+  s_e3390f6b130eda::t_f47e6087201158 30-33,40
+  s_e3390f6b130eda::t_ae641686b28476 229-231
+  s_e3390f6b130eda::t_3e83fd6fed9629 165-170
+  s_e3390f6b130eda::t_0fe3483dc7b79f 345,347-350
+  s_e3390f6b130eda::t_1ff48ee4dce46b 322
+go-backend/TraeCN_tob_knowledge.go
+  s_e3390f6b130eda::t_bfb6b02839729d 503-504,510
+src/updater.ts
+  s_e3390f6b130eda::t_7aec5798775f5f 77,80-86
+  s_e3390f6b130eda::t_c0e57141d77566 39-52,55-61
+  s_e3390f6b130eda::t_71f0368c7d76ef 129-130
+admin-service/dashboard-ui/src/utils/date.ts
+  s_e3390f6b130eda::t_4b8843a0ae787f 38-43
+admin-service/dashboard.go
+  s_e3390f6b130eda::t_1f2b78cf45233d 24-34,44-47,50-53,56-59,63-66,69,71-73,77,85-87
+  s_e3390f6b130eda::t_6010733df10aa9 5
+  s_e3390f6b130eda::t_a7b93205a8fe2e 242,260-261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "fc5becb002d435cde975d2030ac4f62b092f7bd9",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_e3390f6b130eda": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a8d7378da41b6df824c3abe",
+        "model": "glm-5.3"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "tool_type": "builtin",
+        "client_type": "ide",
+        "dedupe_key": "6a8d7378da41b6df824c3abe:6a8d802ada41b6df824c3c0b:afterEdit:05170193",
+        "source_scene": "agent",
+        "operation_id": "6a8d802ada41b6df824c3c0b",
+        "tool_use_id": "6a8d802ada41b6df824c3c0b",
+        "edit_kind": "file_edit",
+        "external_session_id": "6a8d7378da41b6df824c3abe",
+        "runtime_client": "trae-tob-git-ai",
+        "session_id": "6a8d7378da41b6df824c3abe",
+        "tool_id": "icube:applyChatSnapshotPatch"
+      }
+    }
+  }
+}
