@@ -35,8 +35,12 @@ export function getPresetRange(days: number): { from: string; to: string } {
 
 // 给定 from/to，计算上一周期（相同天数）
 export function getPrevRange(from: string, to: string): { from: string; to: string } {
-  const f = new Date(from);
-  const t = new Date(to);
+  // 按 YYYY-MM-DD 拆解后以本地时区构造，避免 new Date(str) 按 UTC 解析
+  // 在负偏移时区被 fmt() 格式化为前一日，导致环比区间整体偏移
+  const [fy, fm, fd] = from.split('-').map(Number);
+  const [ty, tm, td] = to.split('-').map(Number);
+  const f = new Date(fy, fm - 1, fd);
+  const t = new Date(ty, tm - 1, td);
   const spanMs = t.getTime() - f.getTime();
   const dayMs = 24 * 3600 * 1000;
   const spanDays = Math.max(1, Math.round(spanMs / dayMs));

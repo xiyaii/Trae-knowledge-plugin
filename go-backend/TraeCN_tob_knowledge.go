@@ -500,12 +500,14 @@ func runServer() error {
 			continue
 		}
 		// 并发处理：track 和 query 分离信号量，避免 track 拖慢 query
+		// 信号量在子 goroutine 内获取：若在主循环同步获取，trackSem 打满时
+		// 会队头阻塞 stdin 读取，后续 query 全部被卡（违背分离设计初衷）
 		sem := &querySem
 		if req.Type == "track" {
 			sem = &trackSem
 		}
-		*sem <- struct{}{}
 		go func(r KBRequest, s *chan struct{}) {
+			*s <- struct{}{}
 			defer func() { <-*s }()
 			handleRequest(r)
 		}(req, sem)

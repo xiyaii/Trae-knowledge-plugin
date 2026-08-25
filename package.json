@@ -1,8 +1,8 @@
 {
-  "name": "trae-ask",
-  "displayName": "Trae Ask",
+  "name": "asktrae",
+  "displayName": "AskTrae",
   "description": "Trae 企业版智能问答助手 - 快速获取答案",
-  "version": "0.2.1",
+  "version": "0.2.4",
   "publisher": "trae-cn",
   "icon": "media/icon.jpeg",
   "repository": {
@@ -31,7 +31,7 @@
       "activitybar": [
         {
           "id": "trae-ask",
-          "title": "Trae Ask",
+          "title": "AskTrae",
           "icon": "media/icon.svg"
         }
       ]
@@ -48,19 +48,19 @@
     "commands": [
       {
         "command": "traeAsk.openChat",
-        "title": "Trae Ask: 打开问答"
+        "title": "AskTrae: 打开问答"
       },
       {
         "command": "traeAsk.clearChat",
-        "title": "Trae Ask: 清空对话"
+        "title": "AskTrae: 清空对话"
       },
       {
-        "command": "traeAsk.uninstall",
-        "title": "Trae Ask: 卸载插件"
+        "command": "traeAsk.checkUpdate",
+        "title": "AskTrae: 检查更新"
       }
     ],
     "configuration": {
-      "title": "Trae Ask",
+      "title": "AskTrae",
       "properties": {
         "traeAsk.serviceResourceId": {
           "type": "string",
@@ -71,6 +71,11 @@
           "type": "number",
           "default": 10,
           "description": "多轮对话保留的历史轮数"
+        },
+        "traeAsk.updateManifestUrl": {
+          "type": "string",
+          "default": "https://ask-trae.tos-cn-beijing.volces.com/plugin/latest.json",
+          "description": "更新清单地址（latest.json），用于插件自动更新。留空时使用内置地址。"
         }
       }
     }
@@ -83,7 +88,12 @@
     "compile-webview": "cd webview-ui && npm run build",
     "watch-webview": "cd webview-ui && npm run dev",
     "build-go": "cd go-backend && GOOS=darwin GOARCH=arm64 go build -ldflags \"-X main.kbProxyURL=$(cat ../.kb_proxy_url 2>/dev/null || echo '') -X main.trackEndpoint=$(cat ../.track_endpoint 2>/dev/null || echo '') -X main.trackToken=$(cat ../.track_token 2>/dev/null || echo '')\" -o ../bin/kb-server-darwin-arm64 .",
-    "build-all": "npm run build-go && npm run compile-webview && npm run package",
+    "build-go-darwin-x64": "cd go-backend && GOOS=darwin GOARCH=amd64 go build -ldflags \"-X main.kbProxyURL=$(cat ../.kb_proxy_url 2>/dev/null || echo '') -X main.trackEndpoint=$(cat ../.track_endpoint 2>/dev/null || echo '') -X main.trackToken=$(cat ../.track_token 2>/dev/null || echo '')\" -o ../bin/kb-server-darwin-x64 .",
+    "build-go-windows-x64": "cd go-backend && GOOS=windows GOARCH=amd64 go build -ldflags \"-X main.kbProxyURL=$(cat ../.kb_proxy_url 2>/dev/null || echo '') -X main.trackEndpoint=$(cat ../.track_endpoint 2>/dev/null || echo '') -X main.trackToken=$(cat ../.track_token 2>/dev/null || echo '')\" -o ../bin/kb-server-win32-x64.exe .",
+    "build-go-linux-x64": "cd go-backend && GOOS=linux GOARCH=amd64 go build -ldflags \"-X main.kbProxyURL=$(cat ../.kb_proxy_url 2>/dev/null || echo '') -X main.trackEndpoint=$(cat ../.track_endpoint 2>/dev/null || echo '') -X main.trackToken=$(cat ../.track_token 2>/dev/null || echo '')\" -o ../bin/kb-server-linux-x64 .",
+    "build-go-linux-arm64": "cd go-backend && GOOS=linux GOARCH=arm64 go build -ldflags \"-X main.kbProxyURL=$(cat ../.kb_proxy_url 2>/dev/null || echo '') -X main.trackEndpoint=$(cat ../.track_endpoint 2>/dev/null || echo '') -X main.trackToken=$(cat ../.track_token 2>/dev/null || echo '')\" -o ../bin/kb-server-linux-arm64 .",
+    "build-go-all": "npm run build-go && npm run build-go-darwin-x64 && npm run build-go-windows-x64 && npm run build-go-linux-x64 && npm run build-go-linux-arm64",
+    "build-all": "npm run build-go-all && npm run compile-webview && npm run package",
     "package-vsix": "vsce package --skip-license"
   },
   "devDependencies": {
