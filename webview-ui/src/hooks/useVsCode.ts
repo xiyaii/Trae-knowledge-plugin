@@ -60,10 +60,6 @@ export function useVsCode() {
     vscodeRef.current?.postMessage({ type: 'login' });
   }, []);
 
-  const uninstall = useCallback(() => {
-    vscodeRef.current?.postMessage({ type: 'uninstall' });
-  }, []);
-
   return {
     messages,
     loading,
@@ -72,7 +68,6 @@ export function useVsCode() {
     feedbackError,
     clearChat,
     login,
-    uninstall,
     authenticated,
     authResult,
     uninstalled,

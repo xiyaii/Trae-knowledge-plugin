@@ -207,9 +207,6 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       case 'clearChat':
         this.clearChat();
         break;
-      case 'uninstall':
-        await vscode.commands.executeCommand('traeAsk.uninstall');
-        break;
     }
   }
 
@@ -243,7 +240,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} data: https:; font-src ${webview.cspSource} data:;">
-  <title>Trae Ask</title>
+  <title>AskTrae</title>
   <link rel="stylesheet" href="${styleUri}">
 </head>
 <body>

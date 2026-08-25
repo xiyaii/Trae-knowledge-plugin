@@ -7021,10 +7021,6 @@
       var _a;
       (_a = vscodeRef.current) == null ? void 0 : _a.postMessage({ type: "login" });
     }, []);
-    const uninstall = reactExports.useCallback(() => {
-      var _a;
-      (_a = vscodeRef.current) == null ? void 0 : _a.postMessage({ type: "uninstall" });
-    }, []);
     return {
       messages,
       loading,
@@ -7033,7 +7029,6 @@
       feedbackError,
       clearChat,
       login,
-      uninstall,
       authenticated,
       authResult,
       uninstalled
@@ -19797,14 +19792,13 @@
       feedbackError,
       clearChat,
       login,
-      uninstall,
       authenticated,
       authResult,
       uninstalled
     } = useVsCode();
     if (uninstalled) {
       return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "app", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "header", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "header-title", children: "Trae Ask" }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "header", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "header-title", children: "AskTrae" }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "login-screen", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "login-icon", children: "⊘" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "login-title", children: "插件已卸载" }),
@@ -19814,11 +19808,11 @@
     }
     if (!authenticated) {
       return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "app", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "header", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "header-title", children: "Trae Ask" }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "header", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "header-title", children: "AskTrae" }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "login-screen", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "login-icon", children: "💬" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "login-title", children: "需要登录验证" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "login-desc", children: "请登录 Trae 企业版账号以使用 Trae Ask" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "login-desc", children: "请登录 Trae 企业版账号以使用 AskTrae" }),
           authResult && !authResult.ok && authResult.reason && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "login-error", children: authResult.reason }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "login-btn", onClick: login, children: "验证企业版订阅" })
         ] })
@@ -19826,11 +19820,8 @@
     }
     return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "app", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "header", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "header-title", children: "Trae Ask" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "header-actions", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "icon-btn", title: "清空对话", onClick: clearChat, children: "🗑" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "icon-btn", title: "卸载插件", onClick: uninstall, children: "✕" })
-        ] })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "header-title", children: "AskTrae" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "header-actions", children: /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "icon-btn", title: "清空对话", onClick: clearChat, children: "🗑" }) })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "messages", children: [
         messages.length === 0 && !loading && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "empty-state", children: [
