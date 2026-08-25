@@ -1,0 +1,57 @@
+admin-service/dashboard.go
+  s_dcc912f81de4c1::t_f9f9bb97de673a 61-65
+.gitignore
+  s_dcc912f81de4c1::t_1e3b021b922e44 14
+admin-service/kb_proxy.go
+  s_dcc912f81de4c1::t_b0833539ff21f1 134,141
+  s_dcc912f81de4c1::t_c47788a16f5332 119,121
+  s_dcc912f81de4c1::t_36bd2923f9cf50 103
+src/auth.ts
+  s_dcc912f81de4c1::t_97ff53a7de504c 159
+src/webviewProvider.ts
+  s_dcc912f81de4c1::t_8fda08bccff62e 257
+  s_dcc912f81de4c1::t_3bc0d4a16a9ed3 256
+  s_dcc912f81de4c1::t_73bcb1de51044b 5
+admin-service/auth.go
+  s_dcc912f81de4c1::t_7238912caab25d 99
+  s_dcc912f81de4c1::t_11d56304848434 126
+  s_dcc912f81de4c1::t_1a4265d15f2a4a 78-85
+  s_dcc912f81de4c1::t_04695e2932e8fb 194
+  s_dcc912f81de4c1::t_498fd9c27e515f 208
+admin-service/config.go
+  s_dcc912f81de4c1::t_3a27ff80d8a7de 10-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "aa5ab58a1a1180a7df55cd4a24597d7e1ccb928f",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_dcc912f81de4c1": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a8d829ada41b6df824c3d05",
+        "model": "glm-5.3"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "source_scene": "agent",
+        "runtime_client": "trae-tob-git-ai",
+        "session_id": "6a8d829ada41b6df824c3d05",
+        "tool_use_id": "6a8d8b88da41b6df824c3ea1",
+        "external_session_id": "6a8d829ada41b6df824c3d05",
+        "edit_kind": "file_edit",
+        "dedupe_key": "6a8d829ada41b6df824c3d05:6a8d8b88da41b6df824c3ea1:afterEdit:62c50451",
+        "client_type": "ide",
+        "tool_type": "builtin",
+        "operation_id": "6a8d8b88da41b6df824c3ea1",
+        "tool_id": "icube:applyChatSnapshotPatch"
+      }
+    }
+  }
+}
