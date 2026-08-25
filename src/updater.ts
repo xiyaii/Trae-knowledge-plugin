@@ -14,10 +14,15 @@ interface UpdateManifest {
   notes?: string;
 }
 
+// 内置兜底地址：用户未配置/配置为空/被空值覆盖时使用，保证已分发版本始终可更新
+// （VS Code 配置中显式空字符串会覆盖 package.json 默认值，必须代码级兜底）
+const FALLBACK_MANIFEST_URL = 'https://ask-trae.tos-cn-beijing.volces.com/plugin/latest.json';
+
 function getManifestUrl(): string {
-  return vscode.workspace
+  const configured = vscode.workspace
     .getConfiguration('traeAsk')
     .get<string>('updateManifestUrl') || '';
+  return configured.trim() || FALLBACK_MANIFEST_URL;
 }
 
 // 比较语义化版本号（仅支持 x.y.z 数字格式），remote > local 时返回 true
