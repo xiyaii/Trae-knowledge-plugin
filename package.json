@@ -1,6 +1,6 @@
 {
-  "name": "trae-ask",
-  "displayName": "Trae Ask",
+  "name": "asktrae",
+  "displayName": "AskTrae",
   "description": "Trae 企业版智能问答助手 - 快速获取答案",
   "version": "0.2.1",
   "publisher": "trae-cn",
@@ -31,7 +31,7 @@
       "activitybar": [
         {
           "id": "trae-ask",
-          "title": "Trae Ask",
+          "title": "AskTrae",
           "icon": "media/icon.svg"
         }
       ]
@@ -48,19 +48,15 @@
     "commands": [
       {
         "command": "traeAsk.openChat",
-        "title": "Trae Ask: 打开问答"
+        "title": "AskTrae: 打开问答"
       },
       {
         "command": "traeAsk.clearChat",
-        "title": "Trae Ask: 清空对话"
-      },
-      {
-        "command": "traeAsk.uninstall",
-        "title": "Trae Ask: 卸载插件"
+        "title": "AskTrae: 清空对话"
       }
     ],
     "configuration": {
-      "title": "Trae Ask",
+      "title": "AskTrae",
       "properties": {
         "traeAsk.serviceResourceId": {
           "type": "string",
@@ -71,6 +67,11 @@
           "type": "number",
           "default": 10,
           "description": "多轮对话保留的历史轮数"
+        },
+        "traeAsk.updateManifestUrl": {
+          "type": "string",
+          "default": "",
+          "description": "更新清单地址（latest.json），用于插件自动更新。留空则禁用自动更新。"
         }
       }
     }

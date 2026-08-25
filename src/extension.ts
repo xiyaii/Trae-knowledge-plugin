@@ -3,14 +3,15 @@ import * as fs from 'fs';
 import { WebviewProvider } from './webviewProvider';
 import { Secrets } from './secrets';
 import { GoBridge } from './goBridge';
+import { initUpdateChecker, checkForUpdates } from './updater';
 
-export const EXTENSION_ID = 'trae-cn.trae-ask';
+export const EXTENSION_ID = 'trae-cn.asktrae';
 
 let webviewProviderRef: WebviewProvider | undefined;
 
 function shutdownExtension(reason: string) {
   if (GoBridge.isDisposed()) return;
-  console.log(`[trae-ask] shutting down: ${reason}`);
+  console.log(`[asktrae] shutting down: ${reason}`);
   GoBridge.dispose();
   webviewProviderRef?.notifyUninstalled();
 }
@@ -44,6 +45,9 @@ export function activate(context: vscode.ExtensionContext) {
     )
   );
 
+  // 初始化自动更新检查（24h 节流，延迟触发，失败静默）
+  initUpdateChecker(context);
+
   // 注册命令
   context.subscriptions.push(
     vscode.commands.registerCommand('traeAsk.openChat', () => {
@@ -52,30 +56,10 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('traeAsk.clearChat', () => {
       webviewProviderRef?.clearChat();
     }),
-    // 手动卸载命令：用户可通过命令面板或 webview 按钮触发
-    vscode.commands.registerCommand('traeAsk.uninstall', async () => {
-      const choice = await vscode.window.showWarningMessage(
-        '确定要卸载 Trae Ask 插件吗？卸载后需要重新加载窗口以完成。',
-        { modal: true },
-        '卸载'
-      );
-      if (choice !== '卸载') return;
-      shutdownExtension('user-triggered uninstall');
-      try {
-        await vscode.commands.executeCommand(
-          'workbench.extensions.uninstallExtension',
-          EXTENSION_ID
-        );
-        const reload = await vscode.window.showInformationMessage(
-          'Trae Ask 已卸载，请重新加载窗口以完成。',
-          '重新加载'
-        );
-        if (reload === '重新加载') {
-          vscode.commands.executeCommand('workbench.action.reloadWindow');
-        }
-      } catch (err: any) {
-        vscode.window.showErrorMessage(`卸载失败: ${err?.message || String(err)}`);
-      }
+    vscode.commands.registerCommand('traeAsk.checkUpdate', () => {
+      checkForUpdates(context, false).catch((err: any) => {
+        vscode.window.showErrorMessage(`检查更新失败: ${err?.message || err}`);
+      });
     })
   );
 

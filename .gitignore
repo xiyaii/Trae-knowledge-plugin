@@ -9,4 +9,6 @@ bin/
 .kb_proxy_url
 .track_endpoint
 .track_token
+.tos_base_url
+latest.json
 admin-service/admin-service
