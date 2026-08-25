@@ -26,24 +26,11 @@
 
 ## 🚀 快速开始
 
-### 1. 安装插件
-
-在 Trae IDE 扩展面板中通过 VSIX 文件手动安装。
-
-### 2. 验证企业版订阅
-`productType` 位于 `saasEntitlementInfo.productType`，值为数字类型（如 `231`），只要存在即视为企业版用户。
-
-
-storage.json 路径：
-- macOS: `~/Library/Application Support/Trae CN/User/globalStorage/storage.json`
-- Windows: `%APPDATA%/Trae CN/User/globalStorage/storage.json`
-- Linux: `$XDG_CONFIG_HOME/Trae CN/User/globalStorage/storage.json`
-
 1. 点击左侧活动栏的 AskTrae 图标（💬）
 2. 点击「验证企业版订阅」按钮
 3. 验证通过后即可开始问答
 
-### 3. 开始提问
+### 开始提问
 
 在输入框中输入你的技术问题，按 Enter 发送即可获得答案。
 
@@ -70,7 +57,7 @@ storage.json 路径：
 A: AskTrae 仅面向 Trae 企业版用户，请确认你已登录 Trae 企业版账号。
 
 **Q: 为什么返回"知识库未检索到相关内容"？**
-A: 当问题与知识库内容相似度低于阈值（0.2）时会返回此提示，建议联系 Trae 技术支持确认。
+A: 当问题与知识库内容相似度低于阈值时会返回此提示，建议联系 Trae 技术支持确认。
 
 **Q: 对话历史会保留吗？**
 A: 对话历史仅保存在本地内存中，重启 IDE 后会清空。

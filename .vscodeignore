@@ -19,6 +19,7 @@ webpack.config.js
 **/*.map
 **/*.ts
 README.md
+EXTENSION_DETAILS.md
 scripts/**
 .tos_base_url
 latest.json
