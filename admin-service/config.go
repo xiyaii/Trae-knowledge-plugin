@@ -7,11 +7,9 @@ import (
 
 // Config 运营服务端配置，全部通过环境变量注入
 type Config struct {
-	Port          string // HTTP 监听端口
-	DBDSN         string // PostgreSQL 连接串
-	TrackToken    string // /track 和 /kb/chat 接口鉴权 token（编译期注入插件）
-	DashboardUser string // Dashboard BasicAuth 用户名（兜底）
-	DashboardPass string // Dashboard BasicAuth 密码（兜底）
+	Port       string // HTTP 监听端口
+	DBDSN      string // PostgreSQL 连接串
+	TrackToken string // /track 和 /kb/chat 接口鉴权 token（编译期注入插件）
 	// 飞书 SSO 配置
 	LarkAppID       string // 飞书应用 App ID
 	LarkAppSecret   string // 飞书应用 App Secret
@@ -27,8 +25,6 @@ func LoadConfig() (*Config, error) {
 		Port:            getEnv("PORT", "8080"),
 		DBDSN:           os.Getenv("DB_DSN"),
 		TrackToken:      os.Getenv("TRACK_TOKEN"),
-		DashboardUser:   getEnv("DASHBOARD_USER", "admin"),
-		DashboardPass:   os.Getenv("DASHBOARD_PASS"),
 		LarkAppID:       os.Getenv("LARK_APP_ID"),
 		LarkAppSecret:   os.Getenv("LARK_APP_SECRET"),
 		LarkRedirectURL: os.Getenv("LARK_REDIRECT_URL"),
@@ -41,9 +37,6 @@ func LoadConfig() (*Config, error) {
 	}
 	if cfg.TrackToken == "" {
 		return nil, fmt.Errorf("TRACK_TOKEN 环境变量未设置（/track 接口鉴权）")
-	}
-	if cfg.DashboardPass == "" {
-		return nil, fmt.Errorf("DASHBOARD_PASS 环境变量未设置")
 	}
 	if cfg.LarkAppID == "" || cfg.LarkAppSecret == "" || cfg.LarkRedirectURL == "" {
 		return nil, fmt.Errorf("LARK_APP_ID/LARK_APP_SECRET/LARK_REDIRECT_URL 环境变量未设置（飞书 SSO）")

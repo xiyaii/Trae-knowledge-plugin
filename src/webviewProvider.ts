@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { GoBridge, KBResponse } from './goBridge';
 import { Auth } from './auth';
 import * as os from 'os';
+import { randomBytes } from 'crypto';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -252,10 +253,6 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
 }
 
 function getNonce(): string {
-  let text = '';
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
+  // CSP nonce 必须不可预测，使用 crypto CSPRNG（Math.random 非密码学安全）
+  return randomBytes(16).toString('hex');
 }

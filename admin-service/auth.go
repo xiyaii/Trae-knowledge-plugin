@@ -75,6 +75,14 @@ func (s *SessionStore) Delete(sid string) {
 	delete(s.sessions, sid)
 }
 
+// isHTTPS 判断请求是否经 HTTPS 到达：
+// 直连 TLS（r.TLS）或经反向代理/网关终止 TLS（X-Forwarded-Proto: https）。
+// Cookie 的 Secure 标志据此动态设置，保证明文 HTTP 部署期间登录不被破坏，
+// 一旦前置 TLS 即自动启用 Secure，防止会话 ID 在明文链路泄露
+func isHTTPS(r *http.Request) bool {
+	return r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+}
+
 // handleLogin 跳转飞书授权页
 func (app *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 	state, err := randHex(16)
@@ -88,6 +96,7 @@ func (app *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		Value:    state,
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   isHTTPS(r),
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   600,
 	})
@@ -114,7 +123,7 @@ func (app *App) handleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	// 清理 state cookie
 	http.SetCookie(w, &http.Cookie{
-		Name: stateCookieName, Path: "/", MaxAge: -1,
+		Name: stateCookieName, Path: "/", MaxAge: -1, Secure: isHTTPS(r),
 	})
 
 	// 第一步：code 换 user_access_token
@@ -182,6 +191,7 @@ func (app *App) handleCallback(w http.ResponseWriter, r *http.Request) {
 		Value:    sid,
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   isHTTPS(r),
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(sessionTTL.Seconds()),
 	})
@@ -195,7 +205,7 @@ func (app *App) handleLogout(w http.ResponseWriter, r *http.Request) {
 		app.sessions.Delete(c.Value)
 	}
 	http.SetCookie(w, &http.Cookie{
-		Name: sessionCookieName, Path: "/", MaxAge: -1,
+		Name: sessionCookieName, Path: "/", MaxAge: -1, Secure: isHTTPS(r),
 	})
 	http.Redirect(w, r, "/auth/login", http.StatusFound)
 }
