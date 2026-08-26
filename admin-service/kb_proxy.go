@@ -100,6 +100,7 @@ func (app *App) HandleKBChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 构造火山引擎知识库请求
+	// 安全：APIKey 经 Bearer 头传输，必须走 HTTPS，防止链路窃听
 	chatReq := kbServiceChatRequest{
 		ServiceResourceID: kbServiceResourceID,
 		Stream:            false,
@@ -115,8 +116,9 @@ func (app *App) HandleKBChat(w http.ResponseWriter, r *http.Request) {
 	// 调用火山引擎知识库 API
 	chatResp, err := callKnowledgeBase(&chatReq, app.cfg.KBApiKey)
 	if err != nil {
+		// 详细错误（含上游状态码/响应体）仅记日志，客户端只收脱敏文案，避免信息泄露
 		log.Printf("[kb_proxy] 知识库调用失败: %v", err)
-		http.Error(w, "Knowledge base error: "+err.Error(), http.StatusBadGateway)
+		http.Error(w, "Knowledge base service error", http.StatusBadGateway)
 		return
 	}
 
@@ -129,14 +131,14 @@ func (app *App) HandleKBChat(w http.ResponseWriter, r *http.Request) {
 func callKnowledgeBase(chatReq *kbServiceChatRequest, apiKey string) (*kbServiceChatResponse, error) {
 	reqBytes, _ := json.Marshal(chatReq)
 
-	url := fmt.Sprintf("http://%s%s", kbDomain, kbServiceChatPath)
+	url := fmt.Sprintf("https://%s%s", kbDomain, kbServiceChatPath)
 	req, err := http.NewRequest("POST", url, bytes.NewReader(reqBytes))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Host", kbDomain)
+	// Host 由 URL 自动推导，无需显式设置
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 
 	// 使用全局 kbHTTPClient 复用 TCP 连接，避免每次请求重新握手

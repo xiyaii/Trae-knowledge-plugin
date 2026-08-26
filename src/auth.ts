@@ -18,7 +18,6 @@ import * as os from 'os';
 export interface AuthResult {
   ok: boolean;
   reason?: string;
-  productType?: unknown;
   productType?: string;
 }
 
@@ -145,14 +144,6 @@ export class Auth {
   }
 
   /** 递归查找对象中的 productType 字段 */
-  private static findProductType(obj: any): boolean {
-    if (obj === null || obj === undefined) return false;
-    if (typeof obj === 'object') {
-      if (obj.productType !== undefined && obj.productType !== null) {
-        return true;
-      }
-      for (const key of Object.keys(obj)) {
-        if (this.findProductType(obj[key])) return true;
   private static findProductType(obj: any): string | undefined {
     if (obj === null || obj === undefined) return undefined;
     if (typeof obj === 'object') {
@@ -165,7 +156,7 @@ export class Auth {
         if (result !== undefined) return result;
       }
     }
-    return false;
+    return undefined;
   }
 
   /** 读取 iCubeAuthInfo://usertag 字段值作为用户标识 */
