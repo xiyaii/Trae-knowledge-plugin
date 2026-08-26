@@ -1,0 +1,36 @@
+go-backend/TraeCN_tob_knowledge.go
+  s_1da7aadaf13af2::t_e170c622ec1ce9 160-182,194-195,208,214-215,219-224,230-231
+  s_1da7aadaf13af2::t_f5daa54f13d4f7 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "40fbaf6ac816185976039df68f5616b56eeb0ef4",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_1da7aadaf13af2": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a8e9d917c2bb446cb8b2e96",
+        "model": "Doubao-Seed-2.1-pro__dev"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "edit_kind": "file_edit",
+        "operation_id": "6a8e9e2f7c2bb446cb8b2eb7",
+        "source_scene": "agent",
+        "client_type": "ide",
+        "external_session_id": "6a8e9d917c2bb446cb8b2e96",
+        "tool_use_id": "6a8e9e2f7c2bb446cb8b2eb7",
+        "session_id": "6a8e9d917c2bb446cb8b2e96",
+        "tool_name": "Edit",
+        "runtime_client": "trae-tob-git-ai"
+      }
+    }
+  }
+}
