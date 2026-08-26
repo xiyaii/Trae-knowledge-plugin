@@ -1,0 +1,37 @@
+go-backend/TraeCN_tob_knowledge.go
+  s_1da7aadaf13af2::t_e41b0c384553bc 7,177-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "f5af4e2f43b1d78a22b48ed599ed40bb96a23cba",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_1da7aadaf13af2": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a8e9d917c2bb446cb8b2e96",
+        "model": "glm-5.3"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "client_type": "ide",
+        "runtime_client": "trae-tob-git-ai",
+        "edit_kind": "file_edit",
+        "source_scene": "chat",
+        "dedupe_key": "6a8e9d917c2bb446cb8b2e96:e20e46f4-7426-4e81-843f-3f83664b6071:after_edit:/Users/bytedance/Trae_support/Trae_Plugin/go-backend/TraeCN_tob_knowledge.go",
+        "tool_type": "fast_apply",
+        "external_session_id": "6a8e9d917c2bb446cb8b2e96",
+        "operation_id": "e20e46f4-7426-4e81-843f-3f83664b6071",
+        "tool_use_id": "e20e46f4-7426-4e81-843f-3f83664b6071",
+        "session_id": "6a8e9d917c2bb446cb8b2e96",
+        "tool_id": "e20e46f4-7426-4e81-843f-3f83664b6071"
+      }
+    }
+  }
+}
