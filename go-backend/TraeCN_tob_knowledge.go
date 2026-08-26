@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"regexp"
@@ -156,6 +157,29 @@ type KBProxyRequest struct {
 	History []MessageParam `json:"history,omitempty"`
 }
 
+// sanitizeError 将网络错误等敏感信息脱敏，避免向用户暴露服务器IP、端口、接口路径等内部信息
+// - 超时/网络不可达等网络错误 → 用户友好提示
+// - 其他错误 → 通用错误提示
+// 详细错误信息仅记录到 stderr 供运维排查
+func sanitizeError(err error) error {
+	if err == nil {
+		return nil
+	}
+	// 记录原始错误到 stderr（运维排查用）
+	fmt.Fprintf(os.Stderr, "[kb_client] 原始错误: %v\n", err)
+
+	// 网络超时错误
+	if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+		return fmt.Errorf("服务暂时不可用，请求超时，请检查网络连接后重试")
+	}
+	// 连接错误（dial tcp、connection refused 等）
+	if opErr, ok := err.(*net.OpError); ok {
+		return fmt.Errorf("服务暂时不可用，请检查网络连接后重试")
+	}
+	// 通用错误兜底
+	return fmt.Errorf("服务暂时不可用，请稍后重试或联系技术支持")
+}
+
 // KnowledgeServiceChat 通过 admin-service 代理调用知识库（APIKey 存在于服务端，客户端不持有）
 // 返回 admin-service 透传的原始 ServiceChatResponse JSON
 func KnowledgeServiceChat(query string, history []MessageParam) (*ServiceChatResponse, error) {
@@ -167,7 +191,8 @@ func KnowledgeServiceChat(query string, history []MessageParam) (*ServiceChatRes
 
 	req, err := http.NewRequest("POST", kbProxyURL, bytes.NewReader(proxyReqBytes))
 	if err != nil {
-		return nil, err
+		fmt.Fprintf(os.Stderr, "[kb_client] NewRequest 错误: %v\n", err)
+		return nil, fmt.Errorf("内部错误，请联系技术支持")
 	}
 	req.Header.Set("Content-Type", "application/json")
 	// 复用 trackToken 作为 /kb/chat 的鉴权 token
@@ -180,23 +205,30 @@ func KnowledgeServiceChat(query string, history []MessageParam) (*ServiceChatRes
 	client := &http.Client{Timeout: 55 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, sanitizeError(err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		fmt.Fprintf(os.Stderr, "[kb_client] ReadAll 错误: %v\n", err)
+		return nil, fmt.Errorf("服务响应读取失败，请稍后重试")
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("代理服务返回错误: status=%d, body=%s", resp.StatusCode, string(body))
+		// 详细错误（含状态码/响应体）仅记日志，客户端返回脱敏文案
+		fmt.Fprintf(os.Stderr, "[kb_client] 代理服务返回非200: status=%d, body=%s\n", resp.StatusCode, string(body))
+		if resp.StatusCode >= 500 {
+			return nil, fmt.Errorf("服务暂时不可用，请稍后重试")
+		}
+		return nil, fmt.Errorf("请求处理失败，请稍后重试或联系技术支持")
 	}
 
 	var serviceChatResp *ServiceChatResponse
 	err = json.Unmarshal(body, &serviceChatResp)
 	if err != nil {
-		return nil, fmt.Errorf("响应解析失败: %s, 原始返回: %s", err.Error(), string(body))
+		fmt.Fprintf(os.Stderr, "[kb_client] 响应解析失败: %s, 原始返回: %s\n", err.Error(), string(body))
+		return nil, fmt.Errorf("服务响应解析失败，请稍后重试")
 	}
 	return serviceChatResp, nil
 }
