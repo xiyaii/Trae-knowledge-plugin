@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -173,7 +174,9 @@ func sanitizeError(err error) error {
 		return fmt.Errorf("服务暂时不可用，请求超时，请检查网络连接后重试")
 	}
 	// 连接错误（dial tcp、connection refused 等）
-	if opErr, ok := err.(*net.OpError); ok {
+	// 注：http.Client 返回 *url.Error 包装，直接断言 *net.OpError 匹配不到，需 errors.As 解包
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
 		return fmt.Errorf("服务暂时不可用，请检查网络连接后重试")
 	}
 	// 通用错误兜底
