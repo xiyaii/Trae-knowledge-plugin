@@ -260,20 +260,31 @@ func SelectBestResult(resp *ServiceChatResponse) (*CollectionSearchResponseItem,
 // kbTagPattern 匹配知识库切片元信息标签，如 <KBDirectory>...</KBDirectory>、<KBDocName>...</KBDocName>
 var kbTagPattern = regexp.MustCompile(`(?m)^<KB[A-Za-z]+>[^<]*</KB[A-Za-z]+>\s*\n?`)
 
-// referenceTagPattern 匹配问答服务生成回答中的来源引用标记，如 <reference data-ref="..."></reference>
-// (?:...</reference>)? 兜底未闭合的开标签，避免残留半个标签
-var referenceTagPattern = regexp.MustCompile(`<reference[^>]*>(?:.*?</reference>)?`)
+// inlineRefTagPattern 匹配问答服务生成回答中的内联引用标记（火山控制台渲染专用，插件端无法解析）：
+// - <reference data-ref="..."></reference> 来源引用（指向知识切片）
+// - <illustration data-ref="..."></illustration> 插图引用（指向文档图片切片）
+// - <video data-ref="..."></video> 视频引用（指向视频切片，见官方视频问答样例）
+// (?:</...>)? 兜底未闭合的开标签，避免残留半个标签
+var inlineRefTagPattern = regexp.MustCompile(`<(?:reference|illustration|video)[^>]*>(?:[\s\S]*?</(?:reference|illustration|video)>)?`)
+
+// dataRefTagPattern 兜底清理任何携带 data-ref 属性的未知标签
+// 火山内联标记的通用特征是 data-ref 属性（值为 collection_id:point_id），
+// 未来若新增标记类型（如 audio 等）无需改代码即可被清理。
+// 注：Go regexp 为 RE2 不支持反向引用，闭合标签用通用 </\w+> 匹配
+var dataRefTagPattern = regexp.MustCompile(`<\w+[^>]*\bdata-ref\s*=[^>]*>(?:\s*</\w+>)?`)
 
 // CleanContent 清理知识库原始切片内容中的元信息标签和多余空白
 // - 移除 <KBDirectory>、<KBDocName> 等标签行
-// - 移除 <reference data-ref="..."></reference> 引用标记
+// - 移除 <reference>/<illustration>/<video> 内联引用标记
+// - 兜底移除任何带 data-ref 属性的未知标记
 // - 去除首尾空白
 func CleanContent(content string) string {
 	if content == "" {
 		return content
 	}
 	cleaned := kbTagPattern.ReplaceAllString(content, "")
-	cleaned = referenceTagPattern.ReplaceAllString(cleaned, "")
+	cleaned = inlineRefTagPattern.ReplaceAllString(cleaned, "")
+	cleaned = dataRefTagPattern.ReplaceAllString(cleaned, "")
 	return strings.TrimSpace(cleaned)
 }
 
