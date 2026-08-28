@@ -1,0 +1,39 @@
+go-backend/TraeCN_tob_knowledge.go
+  s_a1073023e2fce0::t_4ee1b0e9869914 274
+  s_a1073023e2fce0::t_51377a81c9d56d 263,266-273,278-279,287
+  s_a1073023e2fce0::t_d1c10a159db689 264-265,286
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "e253d9c1b070d1a41aae3c599571d985a0fa5ec1",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_a1073023e2fce0": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9118106bfb01f45f6fba6f",
+        "model": "glm-5.3__dev"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "operation_id": "6a917fe56bfb01f45f6fbc02",
+        "runtime_client": "trae-tob-git-ai",
+        "tool_type": "agent",
+        "source_scene": "unknown",
+        "tool_id": "Edit",
+        "tool_use_id": "6a917fe56bfb01f45f6fbc02",
+        "external_session_id": "6a9118106bfb01f45f6fba6f",
+        "session_id": "6a9118106bfb01f45f6fba6f",
+        "edit_kind": "file_edit",
+        "client_type": "ide",
+        "dedupe_key": "6a9118106bfb01f45f6fba6f:6a917fe56bfb01f45f6fbc02:afterEdit:fdb40e31"
+      }
+    }
+  }
+}
