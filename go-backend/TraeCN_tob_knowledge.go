@@ -399,6 +399,10 @@ func reportTrack(payload TrackPayload) {
 	}
 }
 
+// noResultContent 无结果（检索为空或得分低于阈值）时的统一提示文案
+// 保持固定文案方案，不采用 LLM 兜底话术，确保引导用户联系技术支持
+const noResultContent = "抱歉未找到相关信息，请寻找Trae技术支持进行确认"
+
 // handleRequest 处理单个请求
 func handleRequest(req KBRequest) {
 	// track 类型：埋点上报，不经过鉴权（install 时用户可能未登录）
@@ -445,13 +449,22 @@ func handleRequest(req KBRequest) {
 		return
 	}
 
+	// 问答类型知识服务返回 LLM 生成的回答（知识问答），优先展示；
+	// 检索类型服务无 generated_answer，回退到下方检索切片内容
+	// 注：嵌入的 *CollectionChatCompletionResponseData 为指针，响应无对应字段时为 nil，需判空
+	generatedAnswer := ""
+	if chatResp.Data != nil && chatResp.Data.CollectionChatCompletionResponseData != nil {
+		generatedAnswer = CleanContent(chatResp.Data.GenerateAnswer)
+	}
+
 	// 选出相似度最高的一条
 	best, err := SelectBestResult(chatResp)
 	if err != nil {
+		// 检索无结果：返回固定文案，不采用 LLM 兜底话术（保持原方案）
 		emitResponse(KBResponse{
 			ID:   req.ID,
 			Type: "result",
-			Data: ResultData{Count: 0},
+			Data: ResultData{Count: 0, Content: noResultContent},
 		})
 		return
 	}
@@ -467,7 +480,7 @@ func handleRequest(req KBRequest) {
 			Data: ResultData{
 				Count:   0,
 				Score:   best.Score,
-				Content: "知识库未检索到相关内容，请寻找Trae技术支持进行确认",
+				Content: noResultContent,
 			},
 		})
 		// 上报 query 事件（低分也记录，便于分析知识库覆盖缺口）
@@ -485,6 +498,13 @@ func handleRequest(req KBRequest) {
 		return
 	}
 
+	// 优先使用知识问答回答（LLM 生成），无生成回答时回退检索切片的 markdown 内容
+	// 前端 webview 按 md_content > content 的顺序取值展示
+	mdContent := CleanContent(best.MdContent)
+	if generatedAnswer != "" {
+		mdContent = generatedAnswer
+	}
+
 	// 先返回结果给用户，再上报埋点
 	emitResponse(KBResponse{
 		ID:   req.ID,
@@ -496,7 +516,7 @@ func handleRequest(req KBRequest) {
 			Score:       best.Score,
 			RerankScore: best.RerankScore,
 			Content:     CleanContent(best.Content),
-			MdContent:   CleanContent(best.MdContent),
+			MdContent:   mdContent,
 		},
 	})
 
