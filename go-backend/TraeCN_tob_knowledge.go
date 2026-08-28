@@ -260,14 +260,20 @@ func SelectBestResult(resp *ServiceChatResponse) (*CollectionSearchResponseItem,
 // kbTagPattern 匹配知识库切片元信息标签，如 <KBDirectory>...</KBDirectory>、<KBDocName>...</KBDocName>
 var kbTagPattern = regexp.MustCompile(`(?m)^<KB[A-Za-z]+>[^<]*</KB[A-Za-z]+>\s*\n?`)
 
+// referenceTagPattern 匹配问答服务生成回答中的来源引用标记，如 <reference data-ref="..."></reference>
+// (?:...</reference>)? 兜底未闭合的开标签，避免残留半个标签
+var referenceTagPattern = regexp.MustCompile(`<reference[^>]*>(?:.*?</reference>)?`)
+
 // CleanContent 清理知识库原始切片内容中的元信息标签和多余空白
 // - 移除 <KBDirectory>、<KBDocName> 等标签行
+// - 移除 <reference data-ref="..."></reference> 引用标记
 // - 去除首尾空白
 func CleanContent(content string) string {
 	if content == "" {
 		return content
 	}
 	cleaned := kbTagPattern.ReplaceAllString(content, "")
+	cleaned = referenceTagPattern.ReplaceAllString(cleaned, "")
 	return strings.TrimSpace(cleaned)
 }
 
