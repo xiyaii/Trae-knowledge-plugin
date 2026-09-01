@@ -13,3 +13,4 @@ bin/
 latest.json
 admin-service/admin.service
 admin-service/admin-service
+go-backend/trae-kb-assistant
