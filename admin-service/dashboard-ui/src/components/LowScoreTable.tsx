@@ -65,9 +65,10 @@ export function LowScoreTable({ data }: LowScoreTableProps) {
     return sorted;
   }, [data, search, sortKey, sortDir]);
 
-  // 搜索词或数据重载时回到第一页
+  // 搜索词或数据重载时回到第一页，并清除行展开（索引已指向新数据，保留会误展开）
   useEffect(() => {
     setPage(1);
+    setExpandedRow(null);
   }, [search, data]);
 
   // 前端分页：搜索/排序/导出仍作用于全量数据，仅展示层切片

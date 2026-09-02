@@ -109,5 +109,8 @@ export const api = {
     }),
   // 立即发送一条测试通知（使用已保存的配置）
   testNotify: () =>
-    fetchJSON<{ ok: boolean }>(`/dashboard/notify/test`, { method: 'POST' }),
+    fetchJSON<{ ok: boolean }>(`/dashboard/notify/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    }),
 };

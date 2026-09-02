@@ -190,6 +190,11 @@ func (app *App) HandleNotifyTest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	// CSRF 轻量防护：仅接受 JSON（与 HandleReviewFeedback 同策略，跨站表单无法携带此 Content-Type）
+	if ct := r.Header.Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		http.Error(w, "Unsupported Media Type", http.StatusUnsupportedMediaType)
+		return
+	}
 	cfg, err := app.store.GetNotifyConfig()
 	if err != nil {
 		http.Error(w, "Internal Error", http.StatusInternalServerError)
