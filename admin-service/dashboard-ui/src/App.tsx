@@ -515,10 +515,10 @@ export default function App() {
                       {selectedFeedback.reason || '未填写'}
                     </span>
                   </div>
-                  {selectedFeedback.chunk_id > 0 && (
+                  {selectedFeedback.point_id && (
                     <div className="meta-row">
                       <span className="meta-label">知识库切片ID</span>
-                      <span className="meta-value ts-mono">{selectedFeedback.chunk_id}</span>
+                      <span className="meta-value ts-mono">{selectedFeedback.point_id}</span>
                     </div>
                   )}
                 </div>

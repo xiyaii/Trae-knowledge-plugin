@@ -9,7 +9,7 @@ export interface ChatMessage {
   content: string;
   source?: {
     doc_name: string;
-    chunk_id?: number;
+    point_id?: string;
     score: number;
   };
   error?: boolean;
@@ -135,7 +135,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
             this.messages.push({
               role: 'assistant',
               content,
-              source: d.doc_name ? { doc_name: d.doc_name, chunk_id: d.chunk_id, score: d.score } : undefined,
+              source: d.doc_name ? { doc_name: d.doc_name, point_id: d.point_id, score: d.score } : undefined,
               msgId: id,
             });
           }
@@ -181,7 +181,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
             msg_id: msg.msgId,
             query: userQuery,
             doc_name: target.source?.doc_name,
-            chunk_id: target.source?.chunk_id,
+            point_id: target.source?.point_id,
             answer: target.content?.slice(0, 8000),
             feedback: msg.feedback,
             feedback_reason: msg.reason,

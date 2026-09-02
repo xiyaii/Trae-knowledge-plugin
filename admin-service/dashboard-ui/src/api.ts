@@ -38,7 +38,7 @@ export interface FeedbackItem {
   query: string;
   answer: string;
   doc_name: string;
-  chunk_id: number;
+  point_id: string;
   reason: string;
   ts: number;
 }

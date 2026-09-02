@@ -231,7 +231,7 @@ type FeedbackItem struct {
 	Query   string `json:"query"`
 	Answer  string `json:"answer"`
 	DocName string `json:"doc_name"`
-	ChunkId int    `json:"chunk_id"`
+	PointId string `json:"point_id"`
 	Reason  string `json:"reason"`
 	TS      int64  `json:"ts"`
 }
@@ -245,9 +245,9 @@ func (app *App) HandleFeedback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	rows, err := app.store.pool.Query(ctx,
-		`SELECT t.msg_id, t.query_text, COALESCE(t.answer, ''), t.doc_name, COALESCE(t.chunk_id, 0), COALESCE(t.feedback_reason, ''), t.ts
+		`SELECT t.msg_id, t.query_text, COALESCE(t.answer, ''), t.doc_name, COALESCE(t.point_id, ''), COALESCE(t.feedback_reason, ''), t.ts
 		 FROM (
-		   SELECT msg_id, query_text, answer, doc_name, chunk_id, feedback_reason, ts,
+		   SELECT msg_id, query_text, answer, doc_name, point_id, feedback_reason, ts,
 		          ROW_NUMBER() OVER (PARTITION BY msg_id ORDER BY ts DESC, id DESC) AS rn
 		   FROM events
 		   WHERE event_type='feedback' AND feedback='dislike' AND ts >= $1 AND ts < $2
@@ -264,7 +264,7 @@ func (app *App) HandleFeedback(w http.ResponseWriter, r *http.Request) {
 	items := []FeedbackItem{}
 	for rows.Next() {
 		var it FeedbackItem
-		if err := rows.Scan(&it.MsgID, &it.Query, &it.Answer, &it.DocName, &it.ChunkId, &it.Reason, &it.TS); err != nil {
+		if err := rows.Scan(&it.MsgID, &it.Query, &it.Answer, &it.DocName, &it.PointId, &it.Reason, &it.TS); err != nil {
 			// 记录日志便于排查，不静默丢弃（answer/feedback_reason 等列历史数据可能为 NULL）
 			log.Printf("feedback 明细行扫描失败: %v", err)
 			continue
