@@ -1,0 +1,50 @@
+go-backend/TraeCN_tob_knowledge.go
+  s_9661fb46b6bc6e::t_5a5b79580deaca 311,329,378,440,536,554
+src/goBridge.ts
+  s_9661fb46b6bc6e::t_25b0a4ed70dd31 20,29
+admin-service/store.go
+  s_9661fb46b6bc6e::t_a64089f64bc22d 26
+  s_9661fb46b6bc6e::t_431cfa50cb2388 93-95
+src/webviewProvider.ts
+  s_9661fb46b6bc6e::t_e562fa0e13b715 12,138,184
+admin-service/dashboard-ui/src/api.ts
+  s_9661fb46b6bc6e::t_95eaa5ffcc0912 40
+admin-service/dashboard-ui/src/App.tsx
+  s_9661fb46b6bc6e::t_f6568ff1690b01 449-454
+admin-service/dashboard.go
+  s_9661fb46b6bc6e::t_82ae9a2ed50e7d 232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "853e6d26aae73ea2e5871a0ff94e7f9d7a4248f4",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_9661fb46b6bc6e": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a97f5a6df492123e8d3d5ad",
+        "model": "glm-5.3__dev"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "edit_kind": "file_edit",
+        "client_type": "ide",
+        "operation_id": "6a97f9a2df492123e8d3d668",
+        "source_scene": "unknown",
+        "tool_use_id": "6a97f9a2df492123e8d3d668",
+        "external_session_id": "6a97f5a6df492123e8d3d5ad",
+        "tool_type": "agent",
+        "session_id": "6a97f5a6df492123e8d3d5ad",
+        "dedupe_key": "6a97f5a6df492123e8d3d5ad:6a97f9a2df492123e8d3d668:afterEdit:ec5b960a",
+        "runtime_client": "trae-tob-git-ai",
+        "tool_id": "Edit"
+      }
+    }
+  }
+}
