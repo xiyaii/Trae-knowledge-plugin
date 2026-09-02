@@ -73,9 +73,16 @@ func (s *Store) InitDB() error {
 		PRIMARY KEY (stat_date, metric)
 	);
 
+	-- 点踩反馈审核记录：审核确认后的 msg_id 不再看板展示，原始数据仍在 events 表保留
+	CREATE TABLE IF NOT EXISTS feedback_reviews (
+		msg_id      TEXT PRIMARY KEY,
+		reviewed_at BIGINT NOT NULL
+	);
+
 	-- feedback 能力扩展（兼容已有数据，幂等）
 	ALTER TABLE events ADD COLUMN IF NOT EXISTS feedback TEXT;
 	ALTER TABLE events ADD COLUMN IF NOT EXISTS feedback_reason TEXT;
+	ALTER TABLE events ADD COLUMN IF NOT EXISTS chunk_id INTEGER;
 	ALTER TABLE events ADD COLUMN IF NOT EXISTS answer TEXT;
 
 	-- P0-3: feedback 去重查询的核心索引
@@ -93,6 +100,17 @@ func (s *Store) InsertEvent(e TrackEvent) error {
 		`INSERT INTO events (event_type, user_id, machine_id, msg_id, query_text, score, doc_name, chunk_id, answer, platform, plugin_ver, ts, feedback, feedback_reason)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
 		e.Event, e.UserID, e.MachineID, e.MsgID, e.Query, e.Score, e.DocName, e.ChunkId, e.Answer, e.Platform, e.PluginVer, e.TS, e.Feedback, e.FeedbackReason,
+	)
+	return err
+}
+
+// ReviewFeedback 标记点踩反馈为已审核（按 msg_id，幂等）
+// 审核后 HandleFeedback 查询将过滤该条，原始埋点数据仍保留在 events 表
+func (s *Store) ReviewFeedback(msgID string) error {
+	_, err := s.pool.Exec(context.Background(),
+		`INSERT INTO feedback_reviews (msg_id, reviewed_at) VALUES ($1, $2)
+		 ON CONFLICT (msg_id) DO NOTHING`,
+		msgID, time.Now().UnixMilli(),
 	)
 	return err
 }

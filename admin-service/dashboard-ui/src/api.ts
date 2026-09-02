@@ -34,6 +34,7 @@ export interface LowScoreItem {
 }
 
 export interface FeedbackItem {
+  msg_id: string;
   query: string;
   answer: string;
   doc_name: string;
@@ -49,8 +50,8 @@ export interface UserInfo {
 
 // 请求封装：使用飞书 SSO 登录后的 Cookie 鉴权
 // session 失效时跳转登录页
-async function fetchJSON<T>(url: string): Promise<T> {
-  const resp = await fetch(url, { credentials: 'include' });
+async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
+  const resp = await fetch(url, { credentials: 'include', ...init });
   if (resp.status === 401) {
     // session 失效，跳转飞书 SSO 登录
     window.location.href = '/auth/login';
@@ -76,6 +77,13 @@ export const api = {
     fetchJSON<LowScoreItem[]>(`/dashboard/low-score?from=${from}&to=${to}&limit=${limit}`),
   feedback: (from: string, to: string, limit = 50) =>
     fetchJSON<FeedbackItem[]>(`/dashboard/feedback?from=${from}&to=${to}&limit=${limit}`),
+  // 标记点踩反馈为已审核（审核后不再看板展示，数据保留在数据库）
+  reviewFeedback: (msgId: string) =>
+    fetchJSON<{ ok: boolean }>(`/dashboard/feedback/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ msg_id: msgId }),
+    }),
   me: () => fetchJSON<UserInfo>(`/auth/me`),
   logout: () => { window.location.href = '/auth/logout'; },
 };

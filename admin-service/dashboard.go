@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -226,6 +227,7 @@ func writeJSON(w http.ResponseWriter, v interface{}) {
 
 // FeedbackItem 点踩明细单项
 type FeedbackItem struct {
+	MsgID   string `json:"msg_id"`
 	Query   string `json:"query"`
 	Answer  string `json:"answer"`
 	DocName string `json:"doc_name"`
@@ -243,14 +245,16 @@ func (app *App) HandleFeedback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	rows, err := app.store.pool.Query(ctx,
-		`SELECT query_text, COALESCE(answer, ''), doc_name, COALESCE(feedback_reason, ''), ts
+		`SELECT t.msg_id, t.query_text, COALESCE(t.answer, ''), t.doc_name, COALESCE(t.chunk_id, 0), COALESCE(t.feedback_reason, ''), t.ts
 		 FROM (
-		   SELECT query_text, answer, doc_name, feedback_reason, ts,
+		   SELECT msg_id, query_text, answer, doc_name, chunk_id, feedback_reason, ts,
 		          ROW_NUMBER() OVER (PARTITION BY msg_id ORDER BY ts DESC, id DESC) AS rn
 		   FROM events
 		   WHERE event_type='feedback' AND feedback='dislike' AND ts >= $1 AND ts < $2
-		 ) t WHERE rn = 1
-		 ORDER BY ts DESC LIMIT $3`, from, to, limit)
+		 ) t
+		 LEFT JOIN feedback_reviews fr ON fr.msg_id = t.msg_id
+		 WHERE t.rn = 1 AND fr.msg_id IS NULL
+		 ORDER BY t.ts DESC LIMIT $3`, from, to, limit)
 	if err != nil {
 		http.Error(w, "Query failed: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -260,7 +264,7 @@ func (app *App) HandleFeedback(w http.ResponseWriter, r *http.Request) {
 	items := []FeedbackItem{}
 	for rows.Next() {
 		var it FeedbackItem
-		if err := rows.Scan(&it.Query, &it.Answer, &it.DocName, &it.Reason, &it.TS); err != nil {
+		if err := rows.Scan(&it.MsgID, &it.Query, &it.Answer, &it.DocName, &it.ChunkId, &it.Reason, &it.TS); err != nil {
 			// 记录日志便于排查，不静默丢弃（answer/feedback_reason 等列历史数据可能为 NULL）
 			log.Printf("feedback 明细行扫描失败: %v", err)
 			continue
@@ -268,6 +272,39 @@ func (app *App) HandleFeedback(w http.ResponseWriter, r *http.Request) {
 		items = append(items, it)
 	}
 	writeJSON(w, items)
+}
+
+// HandleReviewFeedback POST /dashboard/feedback/review
+// Body: {"msg_id": "..."}
+// 标记点踩反馈为已审核：标记后不再看板展示，原始数据仍保留在 events 表
+// 审核按 msg_id 维度：用户后续补充修改点踩内容（同 msg_id）也不会重新出现
+func (app *App) HandleReviewFeedback(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	// CSRF 轻量防护：仅接受 JSON 请求（跨站表单无法携带 application/json Content-Type）
+	if ct := r.Header.Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		http.Error(w, "Unsupported Media Type", http.StatusUnsupportedMediaType)
+		return
+	}
+	var body struct {
+		MsgID string `json:"msg_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if body.MsgID == "" {
+		http.Error(w, "Bad Request: msg_id required", http.StatusBadRequest)
+		return
+	}
+	if err := app.store.ReviewFeedback(body.MsgID); err != nil {
+		log.Printf("feedback 审核标记失败 msg_id=%s: %v", body.MsgID, err)
+		http.Error(w, "Internal Error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, map[string]bool{"ok": true})
 }
 
 // parseTimeRange 解析 from/to 查询参数，默认返回最近 7 天

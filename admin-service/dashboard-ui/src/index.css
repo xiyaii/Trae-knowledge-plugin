@@ -1070,6 +1070,27 @@ html, body {
   color: var(--accent-hover);
 }
 
+/* 审核确认按钮：标记点踩反馈已处理 */
+.review-btn {
+  background: var(--accent-soft);
+  border: none;
+  border-radius: 5px;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 12px;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.review-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+}
+.review-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 /* ============================================================
  * 答案详情抽屉（Drawer）
  * ============================================================ */

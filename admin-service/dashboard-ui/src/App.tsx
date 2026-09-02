@@ -35,6 +35,8 @@ export default function App() {
   const [lowScore, setLowScore] = useState<LowScoreItem[]>([]);
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -76,6 +78,21 @@ export default function App() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // 审核确认：标记该条点踩反馈已处理，成功后从列表移除（后端查询已过滤，刷新后不再出现）
+  const handleReview = async (msgId: string) => {
+    if (reviewingId) return;
+    setReviewingId(msgId);
+    setReviewError(null);
+    try {
+      await api.reviewFeedback(msgId);
+      setFeedback((prev) => prev.filter((f) => f.msg_id !== msgId));
+    } catch (e: any) {
+      setReviewError(e.message);
+    } finally {
+      setReviewingId(null);
+    }
+  };
 
   // 从 daily 数组派生 sparkline 数据
   const sparklines = useMemo(() => {
@@ -340,6 +357,12 @@ export default function App() {
                 invertDelta
               />
             </div>
+            {reviewError && (
+              <div className="error-banner" style={{ marginBottom: 12 }}>
+                <span>审核标记失败：{reviewError}</span>
+                <button onClick={() => setReviewError(null)}>关闭</button>
+              </div>
+            )}
             <table className="feedback-table">
               <thead>
                 <tr>
@@ -348,12 +371,13 @@ export default function App() {
                   <th>命中文档</th>
                   <th>答案</th>
                   <th>点踩原因</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
                 {feedback.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', padding: 24 }}>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: 24 }}>
                       暂无点踩数据
                     </td>
                   </tr>
@@ -384,6 +408,20 @@ export default function App() {
                         )}
                       </td>
                       <td>{it.reason || '-'}</td>
+                      <td>
+                        {it.msg_id ? (
+                          <button
+                            className="review-btn"
+                            disabled={reviewingId !== null}
+                            title="确认已按点踩原因处理该条反馈，处理后将不再展示"
+                            onClick={() => handleReview(it.msg_id)}
+                          >
+                            {reviewingId === it.msg_id ? '标记中…' : '已审核'}
+                          </button>
+                        ) : (
+                          <span className="text-muted">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
