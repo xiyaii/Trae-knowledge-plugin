@@ -59,6 +59,7 @@ type kbSearchResponseItem struct {
 	Content   string              `json:"content"`
 	MdContent string              `json:"md_content,omitempty"`
 	Score     float64             `json:"score"`
+	PointId   string              `json:"point_id,omitempty"` // 切片 id（知识库下唯一），用于运营看板 badcase 定位
 	DocInfo   kbSearchItemDocInfo `json:"doc_info,omitempty"`
 }
 
