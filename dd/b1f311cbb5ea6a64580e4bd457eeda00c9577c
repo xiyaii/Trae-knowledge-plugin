@@ -1,0 +1,41 @@
+admin-service/dashboard-ui/src/components/LowScoreTable.tsx
+  s_65924130b0e37a::t_5aea953d4bfeec 68,71
+admin-service/dashboard-ui/src/api.ts
+  s_65924130b0e37a::t_10585e00f5c012 112-115
+admin-service/notifier.go
+  s_65924130b0e37a::t_ca7061edfe6c33 193-197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "ddb1f311cbb5ea6a64580e4bd457eeda00c9577c",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_65924130b0e37a": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9805a7df492123e8d3d838",
+        "model": "glm-5.3__dev"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "tool_id": "Edit",
+        "edit_kind": "file_edit",
+        "client_type": "ide",
+        "dedupe_key": "6a9805a7df492123e8d3d838:6a9824fadf492123e8d3da72:afterEdit:1a42a306",
+        "session_id": "6a9805a7df492123e8d3d838",
+        "runtime_client": "trae-tob-git-ai",
+        "tool_use_id": "6a9824fadf492123e8d3da72",
+        "tool_type": "agent",
+        "operation_id": "6a9824fadf492123e8d3da72",
+        "source_scene": "unknown",
+        "external_session_id": "6a9805a7df492123e8d3d838"
+      }
+    }
+  }
+}
