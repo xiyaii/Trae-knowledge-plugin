@@ -446,6 +446,12 @@ export default function App() {
                       {selectedFeedback.reason || '未填写'}
                     </span>
                   </div>
+                  {selectedFeedback.chunk_id > 0 && (
+                    <div className="meta-row">
+                      <span className="meta-label">知识库切片ID</span>
+                      <span className="meta-value ts-mono">{selectedFeedback.chunk_id}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="drawer-divider" />
                 <div className="drawer-section">

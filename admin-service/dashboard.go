@@ -229,6 +229,7 @@ type FeedbackItem struct {
 	Query   string `json:"query"`
 	Answer  string `json:"answer"`
 	DocName string `json:"doc_name"`
+	ChunkId int    `json:"chunk_id"`
 	Reason  string `json:"reason"`
 	TS      int64  `json:"ts"`
 }

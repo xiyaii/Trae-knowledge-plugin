@@ -23,6 +23,7 @@ type TrackEvent struct {
 	Query          string  `json:"query,omitempty"`           // query / feedback 事件
 	Score          float64 `json:"score,omitempty"`           // 仅 query 事件
 	DocName        string  `json:"doc_name,omitempty"`        // query / feedback 事件
+	ChunkId        int     `json:"chunk_id,omitempty"`        // 知识库切片ID（query / feedback 事件）
 	Answer         string  `json:"answer,omitempty"`          // AI 回答内容（feedback 事件）
 	Platform       string  `json:"platform,omitempty"`        // darwin-arm64 / win32-x64
 	PluginVer      string  `json:"plugin_ver,omitempty"`      // 插件版本
@@ -89,9 +90,9 @@ func (s *Store) InitDB() error {
 // InsertEvent 写入一条埋点事件
 func (s *Store) InsertEvent(e TrackEvent) error {
 	_, err := s.pool.Exec(context.Background(),
-		`INSERT INTO events (event_type, user_id, machine_id, msg_id, query_text, score, doc_name, answer, platform, plugin_ver, ts, feedback, feedback_reason)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-		e.Event, e.UserID, e.MachineID, e.MsgID, e.Query, e.Score, e.DocName, e.Answer, e.Platform, e.PluginVer, e.TS, e.Feedback, e.FeedbackReason,
+		`INSERT INTO events (event_type, user_id, machine_id, msg_id, query_text, score, doc_name, chunk_id, answer, platform, plugin_ver, ts, feedback, feedback_reason)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+		e.Event, e.UserID, e.MachineID, e.MsgID, e.Query, e.Score, e.DocName, e.ChunkId, e.Answer, e.Platform, e.PluginVer, e.TS, e.Feedback, e.FeedbackReason,
 	)
 	return err
 }

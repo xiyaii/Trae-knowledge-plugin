@@ -37,6 +37,7 @@ export interface FeedbackItem {
   query: string;
   answer: string;
   doc_name: string;
+  chunk_id: number;
   reason: string;
   ts: number;
 }

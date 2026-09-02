@@ -308,6 +308,7 @@ type KBRequest struct {
 	PluginVer      string         `json:"plugin_ver,omitempty"`      // 插件版本
 	MsgID          string         `json:"msg_id,omitempty"`          // 关联的 query 请求 ID（feedback 事件用）
 	DocName        string         `json:"doc_name,omitempty"`        // 命中文档名（feedback 事件用）
+	ChunkId        int            `json:"chunk_id,omitempty"`        // 知识库切片ID（feedback 事件用）
 	Answer         string         `json:"answer,omitempty"`          // AI 回答内容（feedback 事件用）
 	Feedback       string         `json:"feedback,omitempty"`        // like | dislike（feedback 事件）
 	FeedbackReason string         `json:"feedback_reason,omitempty"` // 点踩原因（多选以分号拼接）
@@ -325,6 +326,7 @@ type KBResponse struct {
 type ResultData struct {
 	Count       int     `json:"count"`
 	DocName     string  `json:"doc_name"`
+	ChunkId     int     `json:"chunk_id"`
 	ChunkTitle  string  `json:"chunk_title"`
 	Score       float64 `json:"score"`
 	RerankScore float64 `json:"rerank_score"`
@@ -373,6 +375,7 @@ type TrackPayload struct {
 	Query          string  `json:"query,omitempty"`
 	Score          float64 `json:"score,omitempty"`
 	DocName        string  `json:"doc_name,omitempty"`
+	ChunkId        int     `json:"chunk_id,omitempty"`
 	Answer         string  `json:"answer,omitempty"`
 	Platform       string  `json:"platform,omitempty"`
 	PluginVer      string  `json:"plugin_ver,omitempty"`
@@ -434,6 +437,7 @@ func handleRequest(req KBRequest) {
 				MsgID:          req.MsgID,
 				Query:          req.Query,
 				DocName:        req.DocName,
+				ChunkId:        req.ChunkId,
 				Answer:         req.Answer,
 				Platform:       req.Platform,
 				PluginVer:      req.PluginVer,
@@ -529,6 +533,7 @@ func handleRequest(req KBRequest) {
 		Data: ResultData{
 			Count:       int(chatResp.Data.Count),
 			DocName:     best.DocInfo.DocName,
+			ChunkId:     best.ChunkId,
 			ChunkTitle:  best.ChunkTitle,
 			Score:       best.Score,
 			RerankScore: best.RerankScore,
@@ -546,6 +551,7 @@ func handleRequest(req KBRequest) {
 		Query:     req.Query,
 		Score:     best.Score,
 		DocName:   best.DocInfo.DocName,
+		ChunkId:   best.ChunkId,
 		Platform:  req.Platform,
 		PluginVer: req.PluginVer,
 		TS:        time.Now().UnixMilli(),
