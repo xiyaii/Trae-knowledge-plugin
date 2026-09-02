@@ -7,6 +7,8 @@ import { KpiCard } from './components/KpiCard';
 import { DailyChart } from './components/DailyChart';
 import { TopDocsChart } from './components/TopDocsChart';
 import { LowScoreTable } from './components/LowScoreTable';
+import { NotifyConfigPanel } from './components/NotifyConfigPanel';
+import { Pagination } from './components/Pagination';
 import {
   KpiSkeleton,
   ChartSkeleton,
@@ -37,6 +39,9 @@ export default function App() {
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const [fbPage, setFbPage] = useState(1);
+  const [fbPageSize, setFbPageSize] = useState(10);
 
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -57,8 +62,8 @@ export default function App() {
         api.overview(from, to),
         api.daily(from, to),
         api.topDocs(from, to, 15),
-        api.lowScoreMore(from, to, 100),
-        api.feedback(from, to, 100),
+        api.lowScoreMore(from, to, 500),
+        api.feedback(from, to, 500),
         api.overview(prevRange.from, prevRange.to).catch(() => null),
       ]);
       setOverview(ov);
@@ -67,6 +72,7 @@ export default function App() {
       setTopDocs(td);
       setLowScore(ls);
       setFeedback(fb);
+      setFbPage(1); // 时间范围变化重载数据后回到第一页
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -104,6 +110,11 @@ export default function App() {
       dau: pick('dau'),
     };
   }, [daily]);
+
+  // 反馈分析分页（前端分页：服务端单次拉取上限 500 条）
+  const fbMaxPage = Math.max(1, Math.ceil(feedback.length / fbPageSize));
+  const fbCurPage = Math.min(fbPage, fbMaxPage); // 审核移除条目后页码自动收敛
+  const pagedFeedback = feedback.slice((fbCurPage - 1) * fbPageSize, fbCurPage * fbPageSize);
 
   // 应用预设
   const applyPreset = (preset: typeof RANGE_PRESETS[number]) => {
@@ -323,9 +334,14 @@ export default function App() {
       <section className="section">
         <div className="section-header">
           <h2>反馈分析</h2>
-          <span className="section-hint">
-            点赞/点踩统计与点踩明细，辅助知识库内容优化（同消息反复修改取最新）
-          </span>
+          <div className="section-header-right">
+            <span className="section-hint">
+              点赞/点踩统计与点踩明细，辅助知识库内容优化（同消息反复修改取最新）
+            </span>
+            <button className="notify-entry-btn" onClick={() => setNotifyOpen(true)}>
+              定时通知设置
+            </button>
+          </div>
         </div>
         {initialLoading ? (
           <TableSkeleton rows={6} />
@@ -382,8 +398,8 @@ export default function App() {
                     </td>
                   </tr>
                 ) : (
-                  feedback.map((it, i) => (
-                    <tr key={i}>
+                  pagedFeedback.map((it, i) => (
+                    <tr key={`${fbCurPage}-${i}`}>
                       <td>{new Date(it.ts).toLocaleString('zh-CN')}</td>
                       <td>{it.query}</td>
                       <td>{it.doc_name || '-'}</td>
@@ -427,9 +443,24 @@ export default function App() {
                 )}
               </tbody>
             </table>
+            {feedback.length > 0 && (
+              <Pagination
+                page={fbCurPage}
+                pageSize={fbPageSize}
+                total={feedback.length}
+                onChange={setFbPage}
+                onPageSizeChange={(s) => {
+                  setFbPageSize(s);
+                  setFbPage(1);
+                }}
+              />
+            )}
           </>
         ) : null}
       </section>
+
+      {/* 飞书定时通知配置抽屉 */}
+      <NotifyConfigPanel open={notifyOpen} onClose={() => setNotifyOpen(false)} me={userInfo} />
 
       {/* 答案详情抽屉：右侧滑出，markdown 渲染完整答案 */}
       <AnimatePresence>

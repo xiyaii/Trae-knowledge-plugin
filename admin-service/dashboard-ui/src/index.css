@@ -1094,6 +1094,232 @@ html, body {
 /* ============================================================
  * 答案详情抽屉（Drawer）
  * ============================================================ */
+/* ========== 定时通知设置 ========== */
+.section-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.notify-entry-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 12px;
+  white-space: nowrap;
+  transition: all 0.15s var(--ease);
+}
+.notify-entry-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.notify-drawer {
+  width: min(480px, 92vw);
+  height: 100%;
+  background: var(--surface);
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.notify-field {
+  margin-bottom: 18px;
+}
+.notify-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+.notify-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 8px 10px;
+  transition: border-color 0.15s var(--ease);
+}
+.notify-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.notify-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.notify-time {
+  width: 110px;
+}
+.notify-hint {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 6px;
+}
+.notify-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0 16px;
+}
+.notify-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.notify-switch input {
+  display: none;
+}
+.notify-switch-slider {
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--surface-3);
+  position: relative;
+  transition: background 0.2s var(--ease);
+  flex-shrink: 0;
+}
+.notify-switch-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s var(--ease);
+}
+.notify-switch input:checked + .notify-switch-slider {
+  background: var(--accent);
+}
+.notify-switch input:checked + .notify-switch-slider::after {
+  transform: translateX(18px);
+}
+.notify-switch-text {
+  font-size: 13px;
+  color: var(--text-2);
+}
+.weekday-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.weekday-chip {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 10px;
+  transition: all 0.15s var(--ease);
+}
+.weekday-chip.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.at-user-list {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.at-user-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent-soft);
+  border-radius: 6px;
+  color: var(--accent);
+  font-size: 12px;
+  padding: 4px 6px 4px 10px;
+  max-width: 100%;
+}
+.at-user-tag button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 2px;
+  opacity: 0.7;
+}
+.at-user-tag button:hover {
+  opacity: 1;
+}
+.at-add-me {
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 10px;
+  transition: all 0.15s var(--ease);
+}
+.at-add-me:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.notify-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+}
+.notify-primary-btn {
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 28px;
+  transition: opacity 0.15s var(--ease);
+}
+.notify-primary-btn:hover:not(:disabled) {
+  opacity: 0.88;
+}
+.notify-primary-btn:disabled,
+.notify-secondary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.notify-secondary-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 8px 16px;
+  transition: all 0.15s var(--ease);
+}
+.notify-secondary-btn:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.notify-ok-banner {
+  background: var(--success, rgba(52, 199, 89, 0.12));
+  border-radius: 8px;
+  color: var(--success, #34c759);
+  font-size: 13px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+}
+
 .drawer-overlay {
   position: fixed;
   inset: 0;
@@ -1338,4 +1564,61 @@ html, body {
     width: 100%;
     justify-content: center;
   }
+}
+
+/* ========== 分页 ========== */
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 2px 4px;
+  flex-wrap: wrap;
+}
+.pagination-total {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-right: auto;
+}
+.page-btn {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s var(--ease);
+}
+.page-btn:hover:not(:disabled):not(.active) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.page-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.page-ellipsis {
+  color: var(--text-3);
+  font-size: 12px;
+  padding: 0 2px;
+}
+.page-size-select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-2);
+  font-size: 12px;
+  height: 28px;
+  padding: 0 6px;
+  margin-left: 8px;
+  cursor: pointer;
 }

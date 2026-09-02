@@ -27,6 +27,9 @@ func main() {
 
 	app := &App{store: store, cfg: cfg, sessions: NewSessionStore()}
 
+	// 飞书定时通知（分钟级 tick，配置存 DB，看板在线调整后最迟 1 分钟生效）
+	go app.StartFeedbackNotifier()
+
 	mux := http.NewServeMux()
 
 	// 埋点上报接口（公网，X-Track-Token 鉴权）
@@ -50,6 +53,10 @@ func main() {
 	dashMux.HandleFunc("/dashboard/low-score", app.HandleLowScore)
 	dashMux.HandleFunc("/dashboard/feedback", app.HandleFeedback)
 	dashMux.HandleFunc("/dashboard/feedback/review", app.HandleReviewFeedback)
+
+	// 飞书定时通知配置与测试（SessionAuth 鉴权，与看板同权限）
+	dashMux.HandleFunc("/dashboard/notify/config", app.HandleNotifyConfig)
+	dashMux.HandleFunc("/dashboard/notify/test", app.HandleNotifyTest)
 	mux.Handle("/dashboard/", app.SessionAuth(dashMux))
 
 	// 健康检查

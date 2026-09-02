@@ -1,6 +1,7 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LowScoreItem } from '../api';
+import { Pagination } from './Pagination';
 
 interface LowScoreTableProps {
   data: LowScoreItem[];
@@ -30,6 +31,8 @@ export function LowScoreTable({ data }: LowScoreTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('ts');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const filtered = useMemo(() => {
     let arr = data;
@@ -61,6 +64,16 @@ export function LowScoreTable({ data }: LowScoreTableProps) {
     });
     return sorted;
   }, [data, search, sortKey, sortDir]);
+
+  // 搜索词或数据重载时回到第一页
+  useEffect(() => {
+    setPage(1);
+  }, [search, data]);
+
+  // 前端分页：搜索/排序/导出仍作用于全量数据，仅展示层切片
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -154,8 +167,8 @@ export function LowScoreTable({ data }: LowScoreTableProps) {
                 <td colSpan={4} className="no-result">无匹配结果</td>
               </tr>
             ) : (
-              filtered.map((d, i) => (
-                <Fragment key={i}>
+              paged.map((d, i) => (
+                <Fragment key={`${currentPage}-${i}`}>
                   <tr
                     className={`data-row ${expandedRow === i ? 'expanded' : ''}`}
                     onClick={() => setExpandedRow(expandedRow === i ? null : i)}
@@ -210,6 +223,21 @@ export function LowScoreTable({ data }: LowScoreTableProps) {
           </tbody>
         </table>
       </div>
+      {filtered.length > 0 && (
+        <Pagination
+          page={currentPage}
+          pageSize={pageSize}
+          total={filtered.length}
+          onChange={(p) => {
+            setPage(p);
+            setExpandedRow(null); // 翻页后行展开状态失效，避免误展开
+          }}
+          onPageSizeChange={(s) => {
+            setPageSize(s);
+            setPage(1);
+          }}
+        />
+      )}
     </div>
   );
 }

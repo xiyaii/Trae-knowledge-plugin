@@ -48,6 +48,7 @@ export function KpiCard({
       <div className="kpi-label">{label}</div>
       <div className="kpi-value">
         {formatNumber(animated, decimals)}
+        {suffix}
         {delta && delta.dir !== 'flat' && (
           <span className={`kpi-delta ${deltaClass}`}>
             <span className="delta-arrow">{deltaArrow}</span>

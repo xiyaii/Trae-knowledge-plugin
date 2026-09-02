@@ -45,7 +45,20 @@ export interface FeedbackItem {
 
 export interface UserInfo {
   user_id: string;
+  open_id?: string; // 飞书 open_id（ou_ 开头），旧 session 可能无此字段
   name: string;
+}
+
+// 飞书定时通知配置（后端 notify_config 单行表）
+export interface NotifyConfig {
+  enabled: boolean;
+  webhook_url: string;
+  webhook_secret: string;
+  notify_time: string;      // HH:MM
+  notify_weekdays: string; // 逗号分隔 1-7（周一=1 周日=7）
+  at_users: string;        // "open_id|姓名" 逗号分隔
+  dashboard_url: string;
+  last_sent_date: string; // 服务端管理，保存时原样回传
 }
 
 // 请求封装：使用飞书 SSO 登录后的 Cookie 鉴权
@@ -86,4 +99,15 @@ export const api = {
     }),
   me: () => fetchJSON<UserInfo>(`/auth/me`),
   logout: () => { window.location.href = '/auth/logout'; },
+  // 飞书定时通知配置
+  getNotifyConfig: () => fetchJSON<NotifyConfig>(`/dashboard/notify/config`),
+  saveNotifyConfig: (cfg: NotifyConfig) =>
+    fetchJSON<{ ok: boolean }>(`/dashboard/notify/config`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
+    }),
+  // 立即发送一条测试通知（使用已保存的配置）
+  testNotify: () =>
+    fetchJSON<{ ok: boolean }>(`/dashboard/notify/test`, { method: 'POST' }),
 };

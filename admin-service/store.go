@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -79,6 +80,21 @@ func (s *Store) InitDB() error {
 		reviewed_at BIGINT NOT NULL
 	);
 
+	-- 飞书定时通知配置（单行表，id 恒为 1，看板在线调整）
+	CREATE TABLE IF NOT EXISTS notify_config (
+		id              INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+		enabled         BOOLEAN NOT NULL DEFAULT false,
+		webhook_url     TEXT NOT NULL DEFAULT '',
+		webhook_secret  TEXT NOT NULL DEFAULT '',
+		notify_time     TEXT NOT NULL DEFAULT '10:00',
+		notify_weekdays TEXT NOT NULL DEFAULT '1,2,3,4,5',
+		at_users        TEXT NOT NULL DEFAULT '',
+		dashboard_url   TEXT NOT NULL DEFAULT '',
+		last_sent_date  TEXT NOT NULL DEFAULT '',
+		updated_at      BIGINT NOT NULL DEFAULT 0
+	);
+	INSERT INTO notify_config (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
 	-- feedback 能力扩展（兼容已有数据，幂等）
 	ALTER TABLE events ADD COLUMN IF NOT EXISTS feedback TEXT;
 	ALTER TABLE events ADD COLUMN IF NOT EXISTS feedback_reason TEXT;
@@ -113,6 +129,62 @@ func (s *Store) ReviewFeedback(msgID string) error {
 		msgID, time.Now().UnixMilli(),
 	)
 	return err
+}
+
+// NotifyConfig 飞书定时通知配置（notify_config 单行表，id 恒为 1）
+// AtUsers 格式 "open_id|姓名,open_id|姓名"，姓名仅用于看板展示，发送时取 | 前的 open_id
+type NotifyConfig struct {
+	Enabled        bool   `json:"enabled"`
+	WebhookURL     string `json:"webhook_url"`
+	WebhookSecret  string `json:"webhook_secret"`
+	NotifyTime     string `json:"notify_time"`     // HH:MM 本地时区
+	NotifyWeekdays string `json:"notify_weekdays"` // 逗号分隔 1-7（周一=1 周日=7），空=不发送
+	AtUsers        string `json:"at_users"`
+	DashboardURL   string `json:"dashboard_url"`
+	LastSentDate   string `json:"last_sent_date"` // YYYY-MM-DD，服务端管理，不随保存覆盖
+}
+
+// GetNotifyConfig 读取通知配置（单行表）
+func (s *Store) GetNotifyConfig() (*NotifyConfig, error) {
+	cfg := &NotifyConfig{}
+	err := s.pool.QueryRow(context.Background(),
+		`SELECT enabled, webhook_url, webhook_secret, notify_time, notify_weekdays, at_users, dashboard_url, last_sent_date
+		 FROM notify_config WHERE id = 1`).
+		Scan(&cfg.Enabled, &cfg.WebhookURL, &cfg.WebhookSecret, &cfg.NotifyTime, &cfg.NotifyWeekdays, &cfg.AtUsers, &cfg.DashboardURL, &cfg.LastSentDate)
+	if err == pgx.ErrNoRows {
+		return &NotifyConfig{NotifyTime: "10:00", NotifyWeekdays: "1,2,3,4,5"}, nil
+	}
+	return cfg, err
+}
+
+// SaveNotifyConfig 保存通知配置（last_sent_date 不随保存覆盖）
+func (s *Store) SaveNotifyConfig(cfg *NotifyConfig) error {
+	_, err := s.pool.Exec(context.Background(),
+		`UPDATE notify_config SET enabled=$1, webhook_url=$2, webhook_secret=$3, notify_time=$4,
+		 notify_weekdays=$5, at_users=$6, dashboard_url=$7, updated_at=$8 WHERE id = 1`,
+		cfg.Enabled, cfg.WebhookURL, cfg.WebhookSecret, cfg.NotifyTime, cfg.NotifyWeekdays, cfg.AtUsers, cfg.DashboardURL, time.Now().UnixMilli())
+	return err
+}
+
+// MarkNotifySent 记录当日已发送（防进程重启后重发）
+func (s *Store) MarkNotifySent(date string) error {
+	_, err := s.pool.Exec(context.Background(),
+		`UPDATE notify_config SET last_sent_date=$1 WHERE id = 1`, date)
+	return err
+}
+
+// CountPendingFeedback 统计当前待处理（未审核）点踩 badcase 总数
+// 与 HandleFeedback 同口径：按 msg_id 取最新一条去重、过滤已审核
+func (s *Store) CountPendingFeedback() (int64, error) {
+	var count int64
+	err := s.pool.QueryRow(context.Background(),
+		`SELECT COUNT(*) FROM (
+		   SELECT msg_id, ROW_NUMBER() OVER (PARTITION BY msg_id ORDER BY ts DESC, id DESC) AS rn
+		   FROM events WHERE event_type='feedback' AND feedback='dislike'
+		 ) t
+		 LEFT JOIN feedback_reviews fr ON fr.msg_id = t.msg_id
+		 WHERE t.rn = 1 AND fr.msg_id IS NULL`).Scan(&count)
+	return count, err
 }
 
 // StartDailyAggregation 每日凌晨 00:05 刷新昨日的聚合数据
