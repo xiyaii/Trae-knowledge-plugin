@@ -1,0 +1,71 @@
+admin-service/notifier.go
+  h_59daa869d61f7f 1-208
+admin-service/main.go
+  s_65924130b0e37a::t_129f0df386b13b 30-32,56-59
+admin-service/dashboard-ui/src/api.ts
+  s_65924130b0e37a::t_1848dd4f34c66c 48,52-63,102-112
+admin-service/dashboard-ui/src/components/NotifyConfigPanel.tsx
+  h_59daa869d61f7f 1-349
+admin-service/dashboard-ui/src/index.css
+  s_65924130b0e37a::t_a8a22830f6c2b8 1568-1624
+  s_65924130b0e37a::t_9f0e7a41bcb334 1097-1322
+admin-service/dashboard-ui/src/components/Pagination.tsx
+  s_65924130b0e37a::t_93924aad13a84e 1-76
+admin-service/dashboard-ui/src/components/LowScoreTable.tsx
+  s_65924130b0e37a::t_351b9f2e9194e1 170-171
+  s_65924130b0e37a::t_24af962f4654f5 226-240
+  s_65924130b0e37a::t_695c368ae13bd6 68-77
+  s_65924130b0e37a::t_c92f59fdf91d36 1,4
+  s_65924130b0e37a::t_2ae78f08587be0 34-35
+admin-service/store.go
+  s_65924130b0e37a::t_1b50dbcd9128f2 9,83-97,134-188
+  s_65924130b0e37a::t_b5a074c772ca52 189
+admin-service/dashboard-ui/src/components/KpiCard.tsx
+  s_65924130b0e37a::t_3a92e7fad2e1a2 51
+admin-service/dashboard-ui/src/App.tsx
+  s_65924130b0e37a::t_4ef8a5cf120852 337-344
+  s_65924130b0e37a::t_9339ad7b157085 401-402
+  s_65924130b0e37a::t_41c6ab663e6630 446-457,462-463
+  s_65924130b0e37a::t_0825577025578a 10-11
+  s_65924130b0e37a::t_f66154a0d29c28 42-44
+  s_65924130b0e37a::t_85585de8102abb 65-66
+  s_65924130b0e37a::t_90184c212d0686 75
+  s_65924130b0e37a::t_324217a56dc8a0 114-118
+  s_65924130b0e37a::t_3109357d0fa900 464
+admin-service/auth.go
+  s_65924130b0e37a::t_42f9d7c9d90807 31,35,166,185,225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "120adbe8500db29cec78b7e89c8f024e02023bd8",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_65924130b0e37a": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9805a7df492123e8d3d838",
+        "model": "glm-5.3__dev"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "runtime_client": "trae-tob-git-ai",
+        "tool_use_id": "6a98239adf492123e8d3d9ce",
+        "dedupe_key": "6a9805a7df492123e8d3d838:6a98239adf492123e8d3d9ce:afterEdit:f5da38fa",
+        "tool_id": "Edit",
+        "edit_kind": "file_edit",
+        "external_session_id": "6a9805a7df492123e8d3d838",
+        "source_scene": "unknown",
+        "client_type": "ide",
+        "tool_type": "agent",
+        "session_id": "6a9805a7df492123e8d3d838",
+        "operation_id": "6a98239adf492123e8d3d9ce"
+      }
+    }
+  }
+}
