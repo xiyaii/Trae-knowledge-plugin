@@ -47,27 +47,72 @@ Object.entries(LANGS).forEach(([name, lang]) =>
   SyntaxHighlighter.registerLanguage(name, lang as any)
 );
 
-// URL 协议头匹配（预编译，高频复用）
-const URL_PROTO_RE = /^https?:\/\//i;
-// 裸 URL 模式（匹配 http(s):// 开头直到边界字符）—— 用于预处理在相邻 URL 间插入空格
-const BARE_URL_RE = /(https?:\/\/[^\s<>"'，。、；！？!?,;）)】」』》:]+)/gi;
+// RFC 3986 URL 合法字符白名单：
+//   unreserved  = ALPHA / DIGIT / "-" / "." / "_" / "~"
+//   gen-delims  = ":" / "/" / "?" / "#" / "[" / "]" / "@"
+//   sub-delims  = "!" / "$" / "&" / "'" / "(" / ")" / "*" / "+" / "," / ";" / "="
+//   pct-encoded = "%" HEXDIG HEXDIG
+// 中文及全角标点（、。，！？等）一律视为 URL 终止符，避免被误吞入链接。
+const URL_ALLOWED = "A-Za-z0-9\\-._~:/?#\\[\\]@!$&'()*+,;=%";
+// 裸 URL 严格匹配：协议头 + 一个以上合法字符，贪婪吃掉连续的合法 URL 字符
+const BARE_URL_RE = new RegExp(
+  `https?://[${URL_ALLOWED}]+`,
+  'gi'
+);
+// 末尾允许保留但应清理的结尾标点（LLM 常把标点紧贴 URL 末尾输出）
+const TRAILING_PUNCT_RE = /[。，、；！？.,;!?）)】」』》:：\s]+$/;
+// URL 结尾常见的"成对"标点（即使是合法 URL 字符也不应出现在末尾）
+const TRAILING_PAIR_RE = /[),;:!?'">.]+$/;
 
-// 在多个裸 URL 紧挨着（中间只有中文标点/换行、无空格）时插入空格，
-// 避免 remark-gfm 把它们识别成一个超长链接（导致 404 和跨链接下划线）
-function splitAdjacentUrls(content: string): string {
-  return content.replace(BARE_URL_RE, (match, url, offset, full) => {
-    const end = offset + match.length;
-    const nextChar = full.charAt(end);
-    // 紧跟另一个 http(s):// 开头的 URL：在中间插入空格
-    if (nextChar && URL_PROTO_RE.test(full.slice(end))) {
-      return `${url} `;
+/**
+ * 裸 URL 预处理：
+ * 0) 先占位保护：代码块(```...```)、行内代码(`...`)、已有的 Markdown 链接
+ *    [text](url)、已有的 <url> 尖括号链接——这些内部的 URL 不再二次处理
+ * 1) 对剩余裸 URL 用 GFM 尖括号语法 <URL> 包裹，让解析器严格按边界识别，
+ *    防止中文/换行/多个 URL 被 GFM 自动链接粘成一个超长链接
+ * 2) URL 末尾紧跟的悬挂标点（中文句号、顿号、右括号、逗号等）剥离后再包裹，
+ *    例如 "https://x.com/a。"  →  "<https://x.com/a>。"
+ */
+function wrapBareUrls(content: string): string {
+  const placeholders: string[] = [];
+  const PH = (s: string) => {
+    const i = placeholders.length;
+    placeholders.push(s);
+    return `\u0000PH${i}\u0000`;
+  };
+
+  let s = content;
+
+  // 1. 保护围栏代码块 ```lang ... ```
+  s = s.replace(/```[\s\S]*?```/g, PH);
+  // 2. 保护行内代码 `...`（排除空反引号和跨段）
+  s = s.replace(/`[^`\n]+`/g, PH);
+  // 3. 保护已有 Markdown 链接 [text](url) —— 先匹配，避免括号内 URL 被处理
+  s = s.replace(/\[[^\]]*\]\(\s*<?[^)\s]+>?\s*\)/g, PH);
+  // 4. 保护已有尖括号自动链接 <http(s)://...>
+  s = s.replace(/<https?:\/\/[^>\s]+>/gi, PH);
+  // 5. 保护 HTML 标签 <a>...</a>（防止误伤属性里的 URL）—— 目前 webview 一般不会有，但防御性处理
+  s = s.replace(/<a\b[^>]*>[\s\S]*?<\/a>/gi, PH);
+
+  // 对剩余裸 URL 做尖括号包裹
+  s = s.replace(BARE_URL_RE, (raw) => {
+    let url = raw;
+    for (let i = 0; i < 8; i++) {
+      const before = url;
+      url = url.replace(TRAILING_PUNCT_RE, '').replace(TRAILING_PAIR_RE, '');
+      if (url === before) break;
     }
-    return url;
+    if (!url || url.length < 'https://x.co'.length) return raw;
+    return `<${url}>`;
   });
+
+  // 还原占位
+  s = s.replace(/\u0000PH(\d+)\u0000/g, (_, i) => placeholders[Number(i)]);
+  return s;
 }
 
-// 清理 URL 末尾/中间的非法字符：
-// 1) 去除末尾常见中英文标点和空白（LLM 生成时常把标点紧跟在 URL 后）
+// 清理 href 中可能残留的非法字符（兜底，主要针对 Markdown 手动链接场景）：
+// 1) 去掉末尾中英文标点
 // 2) 如果两个 URL 被粘成一个（第二个 http(s):// 开头），从第二个协议头开始截断
 function cleanUrl(href: string): string {
   let s = href;
@@ -77,7 +122,11 @@ function cleanUrl(href: string): string {
     s = s.slice(0, secondProto);
   }
   // 去掉末尾标点/空白
-  s = s.replace(/[。，、；！？.,;!?）)】」』》:：\s]+$/g, '');
+  for (let i = 0; i < 8; i++) {
+    const before = s;
+    s = s.replace(TRAILING_PUNCT_RE, '').replace(TRAILING_PAIR_RE, '');
+    if (s === before) break;
+  }
   return s;
 }
 
@@ -313,7 +362,7 @@ export function ChatMessageView({
             },
           }}
         >
-          {splitAdjacentUrls(msg.content)}
+          {wrapBareUrls(msg.content)}
         </ReactMarkdown>
       </div>
       {msg.source && !msg.error && (

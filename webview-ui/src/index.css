@@ -240,6 +240,16 @@ body {
   padding: 0;
   border-radius: 0;
 }
+/* 未注册语言的纯文本回退样式（与语法高亮区保持一致） */
+.bubble .code-block pre.code-plain {
+  margin: 0;
+  padding: 10px 12px;
+  color: var(--fg);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
 
 /* 任务列表（GFM `- [ ]`）：隐藏圆点，复选框顶替序号位置 */
 .bubble li.task-list-item,
