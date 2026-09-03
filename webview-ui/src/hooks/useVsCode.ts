@@ -60,6 +60,11 @@ export function useVsCode() {
     vscodeRef.current?.postMessage({ type: 'login' });
   }, []);
 
+  // 打开外部链接（自动清理URL末尾标点）
+  const openLink = useCallback((url: string) => {
+    vscodeRef.current?.postMessage({ type: 'openLink', url });
+  }, []);
+
   return {
     messages,
     loading,
@@ -68,6 +73,7 @@ export function useVsCode() {
     feedbackError,
     clearChat,
     login,
+    openLink,
     authenticated,
     authResult,
     uninstalled,

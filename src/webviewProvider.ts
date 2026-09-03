@@ -210,6 +210,17 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       case 'clearChat':
         this.clearChat();
         break;
+      case 'openLink': {
+        const url = (msg as any).url;
+        if (url && typeof url === 'string') {
+          try {
+            vscode.env.openExternal(vscode.Uri.parse(url));
+          } catch {
+            // 忽略无效URL
+          }
+        }
+        break;
+      }
     }
   }
 

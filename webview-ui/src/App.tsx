@@ -11,6 +11,7 @@ export default function App() {
     feedbackError,
     clearChat,
     login,
+    openLink,
     authenticated,
     authResult,
     uninstalled,
@@ -78,7 +79,7 @@ export default function App() {
           </div>
         )}
         {messages.map((msg, i) => (
-          <ChatMessageView key={i} msg={msg} onFeedback={sendFeedback} feedbackError={feedbackError} />
+          <ChatMessageView key={i} msg={msg} onFeedback={sendFeedback} onOpenLink={openLink} feedbackError={feedbackError} />
         ))}
         {loading && (
           <div className="loading">

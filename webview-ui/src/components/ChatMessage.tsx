@@ -3,16 +3,24 @@ import remarkGfm from 'remark-gfm';
 import { useState, useEffect, useRef } from 'react';
 import type { ChatMessage } from '../types';
 
+// 清理URL末尾的标点符号（中英文句号、逗号、分号、感叹号、问号等）
+// LLM生成回答时可能把标点紧跟在URL后面，导致点击链接404
+function cleanUrl(href: string): string {
+  return href.replace(/[。，；！？.,;!?）)】」』》]+$/g, '');
+}
+
 // 点踩内置原因（3 项），支持用户自定义补充
 const DISLIKE_REASONS = ['与问题无关', '结论不完整', '答案错误'];
 
 export function ChatMessageView({
   msg,
   onFeedback,
+  onOpenLink,
   feedbackError,
 }: {
   msg: ChatMessage;
   onFeedback?: (msgId: string, feedback: 'like' | 'dislike', reason?: string) => void;
+  onOpenLink?: (url: string) => void;
   feedbackError?: string | null;
 }) {
   const [showReason, setShowReason] = useState(false);
@@ -91,7 +99,30 @@ export function ChatMessageView({
   return (
     <div className={`message ${msg.role}${msg.error ? ' error' : ''}`}>
       <div className="bubble">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            a: ({ href, children, ...props }) => {
+              const cleanedHref = href ? cleanUrl(href) : href;
+              return (
+                <a
+                  href={cleanedHref}
+                  {...props}
+                  onClick={(e) => {
+                    if (cleanedHref) {
+                      e.preventDefault();
+                      onOpenLink?.(cleanedHref);
+                    }
+                  }}
+                >
+                  {children}
+                </a>
+              );
+            },
+          }}
+        >
+          {msg.content}
+        </ReactMarkdown>
       </div>
       {msg.source && !msg.error && (
         <div className="source">
