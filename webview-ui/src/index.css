@@ -343,17 +343,6 @@ body {
   cursor: default;
   transform: none;
 }
-/* 复制答案按钮 */
-.fb-copy {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: var(--input-bg);
-}
-.fb-copy.copied {
-  color: var(--link);
-  opacity: 1;
-}
 .fb-done {
   font-size: 11px;
   color: var(--muted);

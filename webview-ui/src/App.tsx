@@ -4,10 +4,10 @@ import { InputBox } from './components/InputBox';
 
 // 空状态快捷问题：点击即发送
 const QUICK_QUESTIONS = [
-  '插件安装后无法登录怎么办',
+  '如何配置企业专属智能体',
   '知识库检索没有结果怎么办',
-  '如何配置插件自动更新',
   '企业版订阅验证失败怎么处理',
+  '企业技能如何配置',
 ];
 
 export default function App() {

@@ -26,24 +26,15 @@ export function ChatMessageView({
   const [showReason, setShowReason] = useState(false);
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [customReason, setCustomReason] = useState('');
-  const [copied, setCopied] = useState(false);
   // P1-4: 节流锁，500ms 内的重复点击被忽略，避免连点产生冗余事件
   const submittingRef = useRef(false);
-  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 切换消息时重置内部状态
   useEffect(() => {
     setShowReason(false);
     setSelectedReasons([]);
     setCustomReason('');
-    setCopied(false);
-    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
   }, [msg.msgId]);
-
-  // 卸载时清理复制提示定时器
-  useEffect(() => () => {
-    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-  }, []);
 
   // 已是点踩时，展开原因面板回填已选原因
   useEffect(() => {
@@ -103,36 +94,6 @@ export function ChatMessageView({
     );
   };
 
-  // 复制答案：优先 Clipboard API，不可用时降级 execCommand
-  const fallbackCopy = (text: string) => {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    try { document.execCommand('copy'); } catch { /* 忽略 */ }
-    document.body.removeChild(ta);
-  };
-
-  const handleCopy = () => {
-    const text = msg.content || '';
-    const markCopied = () => {
-      setCopied(true);
-      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-      copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
-    };
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(text).then(markCopied).catch(() => {
-        fallbackCopy(text);
-        markCopied();
-      });
-    } else {
-      fallbackCopy(text);
-      markCopied();
-    }
-  };
-
   const hasError = feedbackError === msg.msgId;
 
   return (
@@ -168,70 +129,59 @@ export function ChatMessageView({
           来源: {msg.source.doc_name} · 得分 {msg.source.score.toFixed(4)}
         </div>
       )}
-      {msg.role === 'assistant' && (
+      {canFeedback && (
         <div
           className={`feedback-bar${msg.feedback ? ' has-feedback' : ''}${showReason ? ' show-reason' : ''}`}
         >
           <button
-            className={`fb-btn fb-copy${copied ? ' copied' : ''}`}
-            onClick={handleCopy}
-            title={copied ? '已复制' : '复制答案'}
+            className={`fb-btn ${msg.feedback === 'like' ? 'active-like' : ''}`}
+            onClick={handleLike}
+            disabled={isLocked}
+            title={isLocked ? '已反馈，不可修改' : '点赞'}
           >
-            {copied ? '✓ 已复制' : '复制'}
+            👍
           </button>
-          {canFeedback && (
-            <>
-              <button
-                className={`fb-btn ${msg.feedback === 'like' ? 'active-like' : ''}`}
-                onClick={handleLike}
-                disabled={isLocked}
-                title={isLocked ? '已反馈，不可修改' : '点赞'}
-              >
-                👍
+          <button
+            className={`fb-btn ${msg.feedback === 'dislike' ? 'active-dislike' : ''}`}
+            onClick={handleDislike}
+            disabled={isLocked && !isDislike}
+            title={isLocked && !isDislike ? '已点赞，不可切换为点踩' : isDislike ? '修改点踩原因' : '点踩'}
+          >
+            👎
+          </button>
+          {msg.feedback && !showReason && (
+            <span className="fb-done">
+              {msg.feedback === 'like' ? '已点赞' : '已点踩'}
+              {isDislike && ' · 点击 👎 可修改原因'}
+            </span>
+          )}
+          {hasError && (
+            <span className="fb-error">反馈失败，请重试</span>
+          )}
+          {showReason && (
+            <div className="reason-panel">
+              <div className="reason-options">
+                {DISLIKE_REASONS.map((r) => (
+                  <label key={r} className="reason-chip">
+                    <input
+                      type="checkbox"
+                      checked={selectedReasons.includes(r)}
+                      onChange={() => toggleReason(r)}
+                    />
+                    {r}
+                  </label>
+                ))}
+              </div>
+              <input
+                className="reason-input"
+                placeholder="补充说明（可选）"
+                value={customReason}
+                onChange={(e) => setCustomReason(e.target.value)}
+              />
+              <button className="reason-submit" onClick={submitReason}>
+                {isDislike ? '更新原因' : '提交原因'}
               </button>
-              <button
-                className={`fb-btn ${msg.feedback === 'dislike' ? 'active-dislike' : ''}`}
-                onClick={handleDislike}
-                disabled={isLocked && !isDislike}
-                title={isLocked && !isDislike ? '已点赞，不可切换为点踩' : isDislike ? '修改点踩原因' : '点踩'}
-              >
-                👎
-              </button>
-              {msg.feedback && !showReason && (
-                <span className="fb-done">
-                  {msg.feedback === 'like' ? '已点赞' : '已点踩'}
-                  {isDislike && ' · 点击 👎 可修改原因'}
-                </span>
-              )}
-              {hasError && (
-                <span className="fb-error">反馈失败，请重试</span>
-              )}
-              {showReason && (
-                <div className="reason-panel">
-                  <div className="reason-options">
-                    {DISLIKE_REASONS.map((r) => (
-                      <label key={r} className="reason-chip">
-                        <input
-                          type="checkbox"
-                          checked={selectedReasons.includes(r)}
-                          onChange={() => toggleReason(r)}
-                        />
-                        {r}
-                      </label>
-                    ))}
-                  </div>
-                  <input
-                    className="reason-input"
-                    placeholder="补充说明（可选）"
-                    value={customReason}
-                    onChange={(e) => setCustomReason(e.target.value)}
-                  />
-                  <button className="reason-submit" onClick={submitReason}>
-                    {isDislike ? '更新原因' : '提交原因'}
-                  </button>
-                </div>
-              )}
-            </>
+            </div>
           )}
         </div>
       )}
