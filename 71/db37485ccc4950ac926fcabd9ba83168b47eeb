@@ -1,0 +1,40 @@
+webview-ui/src/index.css
+  s_c9947babc3babb::t_46a18166bed20a 243-252
+webview-ui/src/components/ChatMessage.tsx
+  s_c9947babc3babb::t_90ae950c1daea4 69-71,73,77-83,86-97,105,108-110
+  s_c9947babc3babb::t_a3c5861cb8c8b1 72,84,98,111
+  s_c9947babc3babb::t_48dd6d0c81cd68 50-68,74-76,99-103,106,114-115,125-129
+  s_c9947babc3babb::t_bbcc96546062f3 365
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "71db37485ccc4950ac926fcabd9ba83168b47eeb",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_c9947babc3babb": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a994dd9df492123e8d3e2e0",
+        "model": "Doubao-Seed-2.1-pro__dev"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "tool_name": "Edit",
+        "edit_kind": "file_edit",
+        "client_type": "ide",
+        "tool_use_id": "6a9954f4df492123e8d3e438",
+        "source_scene": "agent",
+        "runtime_client": "trae-tob-git-ai",
+        "external_session_id": "6a994dd9df492123e8d3e2e0",
+        "operation_id": "6a9954f4df492123e8d3e438",
+        "session_id": "6a994dd9df492123e8d3e2e0"
+      }
+    }
+  }
+}
