@@ -113,28 +113,16 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* 用户气泡：低饱和输入框底色，避免高饱和主色视觉疲劳（参考 Copilot Chat） */
 .message.user .bubble {
-  background: var(--btn-bg);
-  color: var(--btn-fg);
+  background: var(--user-bg);
   align-self: flex-end;
-  border: 1px solid transparent;
 }
 
 .message.assistant .bubble {
   background: var(--assistant-bg);
   border: 1px solid var(--border);
   align-self: flex-start;
-}
-
-/* 用户消息内的链接颜色适配 */
-.message.user .bubble a {
-  color: var(--btn-fg);
-  text-decoration: underline;
-}
-
-/* 用户消息内的代码块适配 */
-.message.user .bubble code {
-  background: rgba(255,255,255,0.15);
 }
 
 .message.error .bubble {
@@ -294,13 +282,22 @@ body {
   opacity: 1;
 }
 
-/* 反馈栏 */
+/* 反馈栏：默认隐藏，hover 消息时显示；已反馈或展开原因面板时保持可见 */
 .feedback-bar {
   display: flex;
   align-items: center;
   gap: 6px;
   margin-top: 8px;
   padding-left: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.message:hover .feedback-bar,
+.feedback-bar.has-feedback,
+.feedback-bar.show-reason {
+  opacity: 1;
+  pointer-events: auto;
 }
 .fb-btn {
   background: none;
@@ -345,6 +342,17 @@ body {
   opacity: 1;
   cursor: default;
   transform: none;
+}
+/* 复制答案按钮 */
+.fb-copy {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--input-bg);
+}
+.fb-copy.copied {
+  color: var(--link);
+  opacity: 1;
 }
 .fb-done {
   font-size: 11px;
@@ -505,6 +513,43 @@ body {
 .empty-state .icon {
   font-size: 32px;
   opacity: 0.5;
+}
+
+.empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.empty-desc {
+  font-size: 12px;
+}
+
+/* 快捷问题芯片 */
+.quick-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+  width: 100%;
+  max-width: 260px;
+}
+
+.quick-chip {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--fg);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease;
+}
+
+.quick-chip:hover {
+  border-color: var(--link);
 }
 
 /* 登录界面 */
