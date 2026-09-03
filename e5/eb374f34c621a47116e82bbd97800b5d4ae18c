@@ -1,0 +1,48 @@
+webview-ui/src/index.css
+  s_1b717efb900ec5::t_7e31d15ed2970f 116,118
+  s_1b717efb900ec5::t_b19a0c91c6e77d 346-356
+  s_1b717efb900ec5::t_22d73a9ed8e1b2 518-554
+  s_1b717efb900ec5::t_c1dfe873e5f5eb 285,292-300
+webview-ui/src/App.tsx
+  s_1b717efb900ec5::t_7829168799958b 5-12
+  s_1b717efb900ec5::t_2c2c7fcb5f86ab 85-94
+webview-ui/src/components/ChatMessage.tsx
+  s_1b717efb900ec5::t_c41602b006b97c 106-135
+  s_1b717efb900ec5::t_7a2812c146cf34 171-174,176-178,180,182-198,200-234
+  s_1b717efb900ec5::t_4c3f6a2b90c46f 29,32,39-40,43-46
+  s_1b717efb900ec5::t_8f65c924a297e4 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "e5eb374f34c621a47116e82bbd97800b5d4ae18c",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_1b717efb900ec5": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9939c2df492123e8d3e0b4",
+        "model": "glm-5.3__dev"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "external_session_id": "6a9939c2df492123e8d3e0b4",
+        "tool_use_id": "6a9945d3df492123e8d3e1bf",
+        "session_id": "6a9939c2df492123e8d3e0b4",
+        "tool_id": "Edit",
+        "operation_id": "6a9945d3df492123e8d3e1bf",
+        "client_type": "ide",
+        "source_scene": "unknown",
+        "runtime_client": "trae-tob-git-ai",
+        "dedupe_key": "6a9939c2df492123e8d3e0b4:6a9945d3df492123e8d3e1bf:afterEdit:08e89691",
+        "edit_kind": "file_edit",
+        "tool_type": "agent"
+      }
+    }
+  }
+}
