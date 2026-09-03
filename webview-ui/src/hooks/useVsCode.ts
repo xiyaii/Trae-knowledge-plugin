@@ -60,9 +60,9 @@ export function useVsCode() {
     vscodeRef.current?.postMessage({ type: 'login' });
   }, []);
 
-  // 打开外部链接（自动清理URL末尾标点）
-  const openLink = useCallback((url: string) => {
-    vscodeRef.current?.postMessage({ type: 'openLink', url });
+  // 打开链接：'web' 在外部浏览器打开，'doc' 优先在 IDE 内预览（如 Markdown 文档）
+  const openLink = useCallback((url: string, kind: 'web' | 'doc' = 'web') => {
+    vscodeRef.current?.postMessage({ type: 'openLink', url, kind });
   }, []);
 
   return {

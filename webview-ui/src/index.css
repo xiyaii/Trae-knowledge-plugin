@@ -186,20 +186,71 @@ body {
   border-radius: 4px;
 }
 
-/* 代码块 */
-.bubble pre {
-  background: var(--input-bg);
-  padding: 12px;
-  border-radius: 6px;
-  overflow-x: auto;
+/* 块级代码：语言标签 + 复制按钮 + 语法高亮容器 */
+.code-block {
   margin: 0.8em 0;
-  font-size: 12px;
   border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--input-bg);
 }
-.bubble pre code {
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 10px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.code-lang {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+.code-copy-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+.code-copy-btn:hover {
+  color: var(--fg);
+  background: var(--input-bg);
+}
+.code-copy-btn.copied {
+  color: var(--vscode-testing-iconPassed, #3fb950);
+}
+/* 高亮 pre 与纯文本回退统一基础样式（具体颜色由内联主题样式覆盖） */
+.bubble .code-block pre {
+  margin: 0;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.bubble .code-block pre code {
   background: none;
   padding: 0;
   border-radius: 0;
+}
+
+/* 任务列表（GFM `- [ ]`）：隐藏圆点，复选框顶替序号位置 */
+.bubble li.task-list-item,
+.bubble li:has(> input[type='checkbox']) {
+  list-style: none;
+}
+.bubble input[type='checkbox'] {
+  accent-color: var(--link);
+  margin: 0 6px 0 0;
+  vertical-align: middle;
+  cursor: default;
 }
 
 /* 链接样式增强 */
@@ -211,6 +262,13 @@ body {
 }
 .bubble a:hover {
   border-bottom-color: var(--link);
+}
+/* 外部链接右上角小箭头，提示将跳出 IDE */
+.bubble a.ext-link::after {
+  content: '↗';
+  font-size: 0.8em;
+  margin-left: 2px;
+  opacity: 0.7;
 }
 
 /* 标题样式 */

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { GoBridge, KBResponse } from './goBridge';
 import { Auth } from './auth';
 import * as os from 'os';
+import * as path from 'path';
 import { randomBytes } from 'crypto';
 
 export interface ChatMessage {
@@ -212,12 +213,41 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         break;
       case 'openLink': {
         const url = (msg as any).url;
+        const kind = (msg as any).kind; // 'web' 走浏览器；'doc' 尝试 IDE 内预览
         if (url && typeof url === 'string') {
-          try {
-            vscode.env.openExternal(vscode.Uri.parse(url));
-          } catch {
-            // 忽略无效URL
+          const openExternal = () => {
+            try {
+              vscode.env.openExternal(vscode.Uri.parse(url));
+            } catch {
+              // 忽略无效URL
+            }
+          };
+          if (kind === 'doc') {
+            try {
+              let uri: vscode.Uri | undefined;
+              if (/^file:\/\//i.test(url)) {
+                uri = vscode.Uri.parse(url);
+              } else if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) {
+                // 无协议头：按本地路径解析（绝对路径或工作区相对路径）
+                if (path.isAbsolute(url)) {
+                  uri = vscode.Uri.file(url);
+                } else {
+                  const folder = vscode.workspace.workspaceFolders?.[0];
+                  if (folder) {
+                    uri = vscode.Uri.joinPath(folder.uri, url);
+                  }
+                }
+              }
+              // Markdown 文档：在 IDE 内打开侧边预览
+              if (uri && /\.(md|markdown)$/i.test(uri.path)) {
+                await vscode.commands.executeCommand('markdown.showPreviewToSide', uri);
+                break;
+              }
+            } catch {
+              // 预览失败时回退到外部浏览器
+            }
           }
+          openExternal();
         }
         break;
       }
