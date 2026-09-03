@@ -47,10 +47,38 @@ Object.entries(LANGS).forEach(([name, lang]) =>
   SyntaxHighlighter.registerLanguage(name, lang as any)
 );
 
-// 清理URL末尾的标点符号（中英文句号、逗号、分号、感叹号、问号等）
-// LLM生成回答时可能把标点紧跟在URL后面，导致点击链接404
+// URL 协议头匹配（预编译，高频复用）
+const URL_PROTO_RE = /^https?:\/\//i;
+// 裸 URL 模式（匹配 http(s):// 开头直到边界字符）—— 用于预处理在相邻 URL 间插入空格
+const BARE_URL_RE = /(https?:\/\/[^\s<>"'，。、；！？!?,;）)】」』》:]+)/gi;
+
+// 在多个裸 URL 紧挨着（中间只有中文标点/换行、无空格）时插入空格，
+// 避免 remark-gfm 把它们识别成一个超长链接（导致 404 和跨链接下划线）
+function splitAdjacentUrls(content: string): string {
+  return content.replace(BARE_URL_RE, (match, url, offset, full) => {
+    const end = offset + match.length;
+    const nextChar = full.charAt(end);
+    // 紧跟另一个 http(s):// 开头的 URL：在中间插入空格
+    if (nextChar && URL_PROTO_RE.test(full.slice(end))) {
+      return `${url} `;
+    }
+    return url;
+  });
+}
+
+// 清理 URL 末尾/中间的非法字符：
+// 1) 去除末尾常见中英文标点和空白（LLM 生成时常把标点紧跟在 URL 后）
+// 2) 如果两个 URL 被粘成一个（第二个 http(s):// 开头），从第二个协议头开始截断
 function cleanUrl(href: string): string {
-  return href.replace(/[。，；！？.,;!?）)】」』》]+$/g, '');
+  let s = href;
+  // 截断被错误拼接的第二个 URL
+  const secondProto = s.search(/(?<!^)https?:\/\//i);
+  if (secondProto > 0) {
+    s = s.slice(0, secondProto);
+  }
+  // 去掉末尾标点/空白
+  s = s.replace(/[。，、；！？.,;!?）)】」』》:：\s]+$/g, '');
+  return s;
 }
 
 // 点踩内置原因（3 项），支持用户自定义补充
@@ -285,7 +313,7 @@ export function ChatMessageView({
             },
           }}
         >
-          {msg.content}
+          {splitAdjacentUrls(msg.content)}
         </ReactMarkdown>
       </div>
       {msg.source && !msg.error && (
