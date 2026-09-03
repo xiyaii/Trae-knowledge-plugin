@@ -1,0 +1,36 @@
+webview-ui/src/components/ChatMessage.tsx
+  s_c9947babc3babb::t_2316b80d39f064 316
+  s_c9947babc3babb::t_4168802110f3f3 50-71,73-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "9ea9208d557abdb9f0891be87d34fa2b95170136",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_c9947babc3babb": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a994dd9df492123e8d3e2e0",
+        "model": "Doubao-Seed-2.1-pro__dev"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "external_session_id": "6a994dd9df492123e8d3e2e0",
+        "source_scene": "agent",
+        "client_type": "ide",
+        "edit_kind": "file_edit",
+        "session_id": "6a994dd9df492123e8d3e2e0",
+        "operation_id": "6a995243df492123e8d3e3bb",
+        "tool_name": "Edit",
+        "tool_use_id": "6a995243df492123e8d3e3bb",
+        "runtime_client": "trae-tob-git-ai"
+      }
+    }
+  }
+}
