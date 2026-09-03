@@ -1,0 +1,43 @@
+webview-ui/src/index.css
+  s_1b717efb900ec5::t_68fd9f0d4b7186 443,448,456-457,462,464
+  s_1b717efb900ec5::t_ac8849338d271e 146-147,149,151,154-155,158-183,185-197,199-205,207,209,211-258,261-277
+  s_1b717efb900ec5::t_51f4adeab13da1 283-287,289-294
+  s_1b717efb900ec5::t_534bab00f907ac 81,84-100
+  s_1b717efb900ec5::t_2195a0194284c9 117-118,120,129-137
+  s_1b717efb900ec5::t_525bd4e686a7db 138,278,301-303,309-316,321-324,328,332-336,340,347,352-354,359-361
+  s_1b717efb900ec5::t_b9eb8ee1d3beb4 139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "800d5b7b18eea15f087d9dbdd93f92fbf0e94c3c",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_1b717efb900ec5": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9939c2df492123e8d3e0b4",
+        "model": "glm-5.3__dev"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "tool_id": "Edit",
+        "tool_type": "agent",
+        "dedupe_key": "6a9939c2df492123e8d3e0b4:6a993e56df492123e8d3e0eb:afterEdit:5fb1ed7e",
+        "source_scene": "unknown",
+        "session_id": "6a9939c2df492123e8d3e0b4",
+        "runtime_client": "trae-tob-git-ai",
+        "edit_kind": "file_edit",
+        "external_session_id": "6a9939c2df492123e8d3e0b4",
+        "tool_use_id": "6a993e56df492123e8d3e0eb",
+        "operation_id": "6a993e56df492123e8d3e0eb",
+        "client_type": "ide"
+      }
+    }
+  }
+}
