@@ -28,10 +28,11 @@ const (
 // Session 内存会话
 type Session struct {
 	// mu 保护 token 相关字段（AccessToken/RefreshToken/TokenExpireAt/refreshing），
-	// 这些字段会被后台 refreshToken goroutine 并发读写；UserID/Name/ExpireAt
+	// 这些会被后台 refreshToken goroutine 并发读写；UserID/OpenID/Name/ExpireAt
 	// 创建后不变，无需加锁
 	mu            sync.Mutex
 	UserID        string
+	OpenID        string // 飞书 open_id（ou_ 开头），自定义机器人 @ 人需用此 ID
 	Name          string
 	AccessToken   string
 	RefreshToken  string
@@ -162,6 +163,7 @@ func (app *App) handleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userID, _ := ui["user_id"].(string)
+	openID, _ := ui["open_id"].(string)
 	name, _ := ui["name"].(string)
 
 	// 白名单校验（可选）
@@ -180,6 +182,7 @@ func (app *App) handleCallback(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	app.sessions.Set(sid, &Session{
 		UserID:        userID,
+		OpenID:        openID,
 		Name:          name,
 		AccessToken:   accessToken,
 		RefreshToken:  refreshToken,
@@ -219,6 +222,7 @@ func (app *App) handleMe(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, map[string]string{
 		"user_id": sess.UserID,
+		"open_id": sess.OpenID,
 		"name":    sess.Name,
 	})
 }

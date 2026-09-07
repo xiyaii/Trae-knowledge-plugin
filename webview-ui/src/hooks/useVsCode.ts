@@ -60,6 +60,11 @@ export function useVsCode() {
     vscodeRef.current?.postMessage({ type: 'login' });
   }, []);
 
+  // 打开链接：'web' 在外部浏览器打开，'doc' 优先在 IDE 内预览（如 Markdown 文档）
+  const openLink = useCallback((url: string, kind: 'web' | 'doc' = 'web') => {
+    vscodeRef.current?.postMessage({ type: 'openLink', url, kind });
+  }, []);
+
   return {
     messages,
     loading,
@@ -68,6 +73,7 @@ export function useVsCode() {
     feedbackError,
     clearChat,
     login,
+    openLink,
     authenticated,
     authResult,
     uninstalled,
