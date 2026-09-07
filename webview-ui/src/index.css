@@ -78,10 +78,26 @@ body {
 .messages {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 16px 14px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+  scroll-behavior: smooth;
+}
+
+/* 自定义滚动条 - 贴合 VS Code 风格 */
+.messages::-webkit-scrollbar {
+  width: 6px;
+}
+.messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+.messages::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+.messages::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 .message {
@@ -97,6 +113,7 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* 用户气泡：低饱和输入框底色，避免高饱和主色视觉疲劳（参考 Copilot Chat） */
 .message.user .bubble {
   background: var(--user-bg);
   align-self: flex-end;
@@ -114,85 +131,299 @@ body {
 }
 
 .bubble {
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.7;
   word-break: break-word;
-  max-width: 92%;
+  max-width: 94%;
 }
 
-.bubble p { margin: 0.5em 0; }
+/* 段落间距 */
+.bubble p { margin: 0.6em 0; }
 .bubble p:first-child { margin-top: 0; }
 .bubble p:last-child { margin-bottom: 0; }
-.bubble pre {
-  background: var(--input-bg);
-  padding: 8px;
-  border-radius: 4px;
-  overflow-x: auto;
-  margin: 0.5em 0;
-  font-size: 12px;
+
+/* 修复列表序号溢出问题：为序号预留空间 */
+.bubble ul,
+.bubble ol {
+  margin: 0.6em 0;
+  padding-left: 1.5em;
 }
+.bubble li {
+  margin: 0.3em 0;
+  padding-left: 0.2em;
+}
+.bubble li > p {
+  margin: 0.2em 0;
+}
+.bubble ul {
+  list-style-type: disc;
+}
+.bubble ol {
+  list-style-type: decimal;
+}
+
+/* 引用块样式 */
+.bubble blockquote {
+  margin: 0.6em 0;
+  padding: 0.5em 0.8em;
+  border-left: 3px solid var(--link);
+  background: var(--input-bg);
+  border-radius: 0 4px 4px 0;
+  color: var(--muted);
+}
+.bubble blockquote p {
+  margin: 0.3em 0;
+}
+
+/* 行内代码 */
 .bubble code {
+  font-family: var(--vscode-editor-font-family, 'SF Mono', Monaco, monospace);
+  font-size: 12px;
+  background: var(--input-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* 块级代码：语言标签 + 复制按钮 + 语法高亮容器 */
+.code-block {
+  margin: 0.8em 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--input-bg);
+}
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 10px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.code-lang {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+.code-copy-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+.code-copy-btn:hover {
+  color: var(--fg);
+  background: var(--input-bg);
+}
+.code-copy-btn.copied {
+  color: var(--vscode-testing-iconPassed, #3fb950);
+}
+/* 高亮 pre 与纯文本回退统一基础样式（具体颜色由内联主题样式覆盖） */
+.bubble .code-block pre {
+  margin: 0;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.bubble .code-block pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+/* 未注册语言的纯文本回退样式（与语法高亮区保持一致） */
+.bubble .code-block pre.code-plain {
+  margin: 0;
+  padding: 10px 12px;
+  color: var(--fg);
   font-family: var(--vscode-editor-font-family, monospace);
   font-size: 12px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
-.bubble a { color: var(--link); }
+
+/* 任务列表（GFM `- [ ]`）：隐藏圆点，复选框顶替序号位置 */
+.bubble li.task-list-item,
+.bubble li:has(> input[type='checkbox']) {
+  list-style: none;
+}
+.bubble input[type='checkbox'] {
+  accent-color: var(--link);
+  margin: 0 6px 0 0;
+  vertical-align: middle;
+  cursor: default;
+}
+
+/* 链接样式增强 */
+.bubble a {
+  color: var(--link);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+.bubble a:hover {
+  border-bottom-color: var(--link);
+}
+/* 外部链接右上角小箭头，提示将跳出 IDE */
+.bubble a.ext-link::after {
+  content: '↗';
+  font-size: 0.8em;
+  margin-left: 2px;
+  opacity: 0.7;
+}
+
+/* 标题样式 */
+.bubble h1,
+.bubble h2,
+.bubble h3,
+.bubble h4,
+.bubble h5,
+.bubble h6 {
+  margin: 0.8em 0 0.4em 0;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.bubble h1:first-child,
+.bubble h2:first-child,
+.bubble h3:first-child { margin-top: 0; }
+.bubble h1 { font-size: 1.2em; }
+.bubble h2 { font-size: 1.15em; }
+.bubble h3 { font-size: 1.1em; }
+.bubble h4 { font-size: 1.05em; }
+
+/* 分隔线 */
+.bubble hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1em 0;
+}
+
+/* 表格样式 */
+.bubble table {
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  width: 100%;
+  font-size: 12px;
+}
+.bubble th,
+.bubble td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+}
+.bubble th {
+  background: var(--input-bg);
+  font-weight: 600;
+}
+
+/* 强调文本 */
+.bubble strong {
+  font-weight: 600;
+}
+.bubble em {
+  font-style: italic;
+}
 
 .source {
   font-size: 11px;
   color: var(--muted);
-  margin-top: 4px;
-  display: flex;
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: var(--input-bg);
+  border-radius: 4px;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+.source:hover {
+  opacity: 1;
 }
 
-/* 反馈栏 */
+/* 反馈栏：默认隐藏，hover 消息时显示；已反馈或展开原因面板时保持可见 */
 .feedback-bar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-top: 6px;
+  gap: 6px;
+  margin-top: 8px;
+  padding-left: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.message:hover .feedback-bar,
+.feedback-bar.has-feedback,
+.feedback-bar.show-reason {
+  opacity: 1;
+  pointer-events: auto;
 }
 .fb-btn {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 14px;
-  padding: 2px 4px;
-  border-radius: 4px;
-  opacity: 0.6;
-  transition: opacity 0.15s, background 0.15s;
+  font-size: 13px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  opacity: 0.5;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .fb-btn:hover {
   opacity: 1;
   background: var(--input-bg);
+  transform: scale(1.05);
+}
+.fb-btn:active {
+  transform: scale(0.95);
 }
 .fb-btn:disabled {
   cursor: not-allowed;
-  opacity: 0.4;
+  opacity: 0.3;
 }
 .fb-btn:disabled:hover {
   background: none;
+  transform: none;
 }
-.fb-btn.active-like,
+.fb-btn.active-like {
+  opacity: 1;
+  background: rgba(0, 122, 255, 0.1);
+}
 .fb-btn.active-dislike {
   opacity: 1;
+  background: rgba(255, 149, 0, 0.1);
 }
 .fb-btn.active-like:disabled,
 .fb-btn.active-dislike:disabled {
   /* 已选中的按钮即便 disabled 仍保持显眼 */
   opacity: 1;
   cursor: default;
+  transform: none;
 }
 .fb-done {
   font-size: 11px;
   color: var(--muted);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--input-bg);
 }
 .fb-error {
   font-size: 11px;
   color: var(--error);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(241, 76, 76, 0.1);
 }
 
 /* 点踩原因面板 */
@@ -274,11 +505,12 @@ body {
 
 .input-area {
   border-top: 1px solid var(--border);
-  padding: 8px 12px;
+  padding: 12px;
   display: flex;
   gap: 8px;
   align-items: flex-end;
   flex-shrink: 0;
+  background: var(--bg);
 }
 
 .input-box {
@@ -286,14 +518,15 @@ body {
   background: var(--input-bg);
   color: var(--input-fg);
   border: 1px solid var(--input-border);
-  border-radius: 6px;
-  padding: 8px 10px;
+  border-radius: 8px;
+  padding: 10px 12px;
   font-family: inherit;
   font-size: 13px;
   resize: none;
   max-height: 120px;
-  min-height: 36px;
+  min-height: 40px;
   line-height: 1.5;
+  transition: border-color 0.15s;
 }
 
 .input-box:focus {
@@ -337,6 +570,43 @@ body {
 .empty-state .icon {
   font-size: 32px;
   opacity: 0.5;
+}
+
+.empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.empty-desc {
+  font-size: 12px;
+}
+
+/* 快捷问题芯片 */
+.quick-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+  width: 100%;
+  max-width: 260px;
+}
+
+.quick-chip {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--fg);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease;
+}
+
+.quick-chip:hover {
+  border-color: var(--link);
 }
 
 /* 登录界面 */

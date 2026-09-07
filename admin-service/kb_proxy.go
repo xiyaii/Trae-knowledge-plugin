@@ -15,7 +15,7 @@ import (
 
 var kbDomain = "api-knowledgebase.mlp.cn-beijing.volces.com"
 var kbServiceChatPath = "/api/knowledge/service/chat"
-var kbServiceResourceID = "kb-service-8f088a75ce8ab429"
+var kbServiceResourceID = "kb-service-43adcb20b1bb63a1" //问答服务
 
 // kbHTTPClient 全局复用连接池，避免每次请求重新建立 TCP 连接
 // - MaxIdleConnsPerHost: 10 对单 host 足够，超过则新建连接
@@ -51,12 +51,15 @@ type kbServiceChatResponse struct {
 type kbCollectionChatResponseData struct {
 	Count      int32                  `json:"count"`
 	ResultList []kbSearchResponseItem `json:"result_list,omitempty"`
+	// 问答类型知识服务返回的 LLM 生成回答；检索类型服务无此字段
+	GeneratedAnswer string `json:"generated_answer,omitempty"`
 }
 
 type kbSearchResponseItem struct {
 	Content   string              `json:"content"`
 	MdContent string              `json:"md_content,omitempty"`
 	Score     float64             `json:"score"`
+	PointId   string              `json:"point_id,omitempty"` // 切片 id（知识库下唯一），用于运营看板 badcase 定位
 	DocInfo   kbSearchItemDocInfo `json:"doc_info,omitempty"`
 }
 

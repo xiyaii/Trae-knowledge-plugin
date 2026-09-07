@@ -2,6 +2,14 @@ import { useVsCode } from './hooks/useVsCode';
 import { ChatMessageView } from './components/ChatMessage';
 import { InputBox } from './components/InputBox';
 
+// 空状态快捷问题：点击即发送
+const QUICK_QUESTIONS = [
+  '如何配置企业专属智能体',
+  '知识库检索没有结果怎么办',
+  '企业版订阅验证失败怎么处理',
+  '企业技能如何配置',
+];
+
 export default function App() {
   const {
     messages,
@@ -11,6 +19,7 @@ export default function App() {
     feedbackError,
     clearChat,
     login,
+    openLink,
     authenticated,
     authResult,
     uninstalled,
@@ -73,12 +82,20 @@ export default function App() {
       <div className="messages">
         {messages.length === 0 && !loading && (
           <div className="empty-state">
-            <div className="icon">💡</div>
-            <div>输入问题开始问答</div>
+            <div className="icon">💬</div>
+            <div className="empty-title">AskTrae 技术支持</div>
+            <div className="empty-desc">有 Trae IDE 或企业版使用问题？直接描述即可</div>
+            <div className="quick-questions">
+              {QUICK_QUESTIONS.map((q) => (
+                <button key={q} className="quick-chip" onClick={() => sendQuery(q)}>
+                  {q}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {messages.map((msg, i) => (
-          <ChatMessageView key={i} msg={msg} onFeedback={sendFeedback} feedbackError={feedbackError} />
+          <ChatMessageView key={i} msg={msg} onFeedback={sendFeedback} onOpenLink={openLink} feedbackError={feedbackError} />
         ))}
         {loading && (
           <div className="loading">

@@ -7,6 +7,8 @@ import { KpiCard } from './components/KpiCard';
 import { DailyChart } from './components/DailyChart';
 import { TopDocsChart } from './components/TopDocsChart';
 import { LowScoreTable } from './components/LowScoreTable';
+import { NotifyConfigPanel } from './components/NotifyConfigPanel';
+import { Pagination } from './components/Pagination';
 import {
   KpiSkeleton,
   ChartSkeleton,
@@ -35,6 +37,11 @@ export default function App() {
   const [lowScore, setLowScore] = useState<LowScoreItem[]>([]);
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const [fbPage, setFbPage] = useState(1);
+  const [fbPageSize, setFbPageSize] = useState(10);
 
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -55,8 +62,8 @@ export default function App() {
         api.overview(from, to),
         api.daily(from, to),
         api.topDocs(from, to, 15),
-        api.lowScoreMore(from, to, 100),
-        api.feedback(from, to, 100),
+        api.lowScoreMore(from, to, 500),
+        api.feedback(from, to, 500),
         api.overview(prevRange.from, prevRange.to).catch(() => null),
       ]);
       setOverview(ov);
@@ -65,6 +72,7 @@ export default function App() {
       setTopDocs(td);
       setLowScore(ls);
       setFeedback(fb);
+      setFbPage(1); // 时间范围变化重载数据后回到第一页
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -77,6 +85,21 @@ export default function App() {
     load();
   }, [load]);
 
+  // 审核确认：标记该条点踩反馈已处理，成功后从列表移除（后端查询已过滤，刷新后不再出现）
+  const handleReview = async (msgId: string) => {
+    if (reviewingId) return;
+    setReviewingId(msgId);
+    setReviewError(null);
+    try {
+      await api.reviewFeedback(msgId);
+      setFeedback((prev) => prev.filter((f) => f.msg_id !== msgId));
+    } catch (e: any) {
+      setReviewError(e.message);
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
   // 从 daily 数组派生 sparkline 数据
   const sparklines = useMemo(() => {
     const pick = (key: keyof DailyItem) => daily.map((d) => Number(d[key]));
@@ -87,6 +110,11 @@ export default function App() {
       dau: pick('dau'),
     };
   }, [daily]);
+
+  // 反馈分析分页（前端分页：服务端单次拉取上限 500 条）
+  const fbMaxPage = Math.max(1, Math.ceil(feedback.length / fbPageSize));
+  const fbCurPage = Math.min(fbPage, fbMaxPage); // 审核移除条目后页码自动收敛
+  const pagedFeedback = feedback.slice((fbCurPage - 1) * fbPageSize, fbCurPage * fbPageSize);
 
   // 应用预设
   const applyPreset = (preset: typeof RANGE_PRESETS[number]) => {
@@ -306,9 +334,14 @@ export default function App() {
       <section className="section">
         <div className="section-header">
           <h2>反馈分析</h2>
-          <span className="section-hint">
-            点赞/点踩统计与点踩明细，辅助知识库内容优化（同消息反复修改取最新）
-          </span>
+          <div className="section-header-right">
+            <span className="section-hint">
+              点赞/点踩统计与点踩明细，辅助知识库内容优化（同消息反复修改取最新）
+            </span>
+            <button className="notify-entry-btn" onClick={() => setNotifyOpen(true)}>
+              定时通知设置
+            </button>
+          </div>
         </div>
         {initialLoading ? (
           <TableSkeleton rows={6} />
@@ -340,6 +373,12 @@ export default function App() {
                 invertDelta
               />
             </div>
+            {reviewError && (
+              <div className="error-banner" style={{ marginBottom: 12 }}>
+                <span>审核标记失败：{reviewError}</span>
+                <button onClick={() => setReviewError(null)}>关闭</button>
+              </div>
+            )}
             <table className="feedback-table">
               <thead>
                 <tr>
@@ -348,18 +387,19 @@ export default function App() {
                   <th>命中文档</th>
                   <th>答案</th>
                   <th>点踩原因</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
                 {feedback.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', padding: 24 }}>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: 24 }}>
                       暂无点踩数据
                     </td>
                   </tr>
                 ) : (
-                  feedback.map((it, i) => (
-                    <tr key={i}>
+                  pagedFeedback.map((it, i) => (
+                    <tr key={`${fbCurPage}-${i}`}>
                       <td>{new Date(it.ts).toLocaleString('zh-CN')}</td>
                       <td>{it.query}</td>
                       <td>{it.doc_name || '-'}</td>
@@ -384,14 +424,43 @@ export default function App() {
                         )}
                       </td>
                       <td>{it.reason || '-'}</td>
+                      <td>
+                        {it.msg_id ? (
+                          <button
+                            className="review-btn"
+                            disabled={reviewingId !== null}
+                            title="确认已按点踩原因处理该条反馈，处理后将不再展示"
+                            onClick={() => handleReview(it.msg_id)}
+                          >
+                            {reviewingId === it.msg_id ? '标记中…' : '已审核'}
+                          </button>
+                        ) : (
+                          <span className="text-muted">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
+            {feedback.length > 0 && (
+              <Pagination
+                page={fbCurPage}
+                pageSize={fbPageSize}
+                total={feedback.length}
+                onChange={setFbPage}
+                onPageSizeChange={(s) => {
+                  setFbPageSize(s);
+                  setFbPage(1);
+                }}
+              />
+            )}
           </>
         ) : null}
       </section>
+
+      {/* 飞书定时通知配置抽屉 */}
+      <NotifyConfigPanel open={notifyOpen} onClose={() => setNotifyOpen(false)} me={userInfo} />
 
       {/* 答案详情抽屉：右侧滑出，markdown 渲染完整答案 */}
       <AnimatePresence>
@@ -446,6 +515,12 @@ export default function App() {
                       {selectedFeedback.reason || '未填写'}
                     </span>
                   </div>
+                  {selectedFeedback.point_id && (
+                    <div className="meta-row">
+                      <span className="meta-label">知识库切片ID</span>
+                      <span className="meta-value ts-mono">{selectedFeedback.point_id}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="drawer-divider" />
                 <div className="drawer-section">
