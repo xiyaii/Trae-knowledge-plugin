@@ -333,23 +333,6 @@ body {
   font-style: italic;
 }
 
-.source {
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 6px;
-  padding: 4px 8px;
-  background: var(--input-bg);
-  border-radius: 4px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  opacity: 0.8;
-  transition: opacity 0.15s;
-}
-.source:hover {
-  opacity: 1;
-}
-
 /* 反馈栏：默认隐藏，hover 消息时显示；已反馈或展开原因面板时保持可见 */
 .feedback-bar {
   display: flex;

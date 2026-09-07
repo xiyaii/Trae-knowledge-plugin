@@ -365,11 +365,6 @@ export function ChatMessageView({
           {wrapBareUrls(msg.content)}
         </ReactMarkdown>
       </div>
-      {msg.source && !msg.error && (
-        <div className="source">
-          来源: {msg.source.doc_name} · 得分 {msg.source.score.toFixed(4)}
-        </div>
-      )}
       {canFeedback && (
         <div className="feedback-bar">
           <button
