@@ -1,0 +1,54 @@
+admin-service/dashboard.go
+  s_dded337e414d6f::t_f1ecd1059968a9 216-218
+  s_dded337e414d6f::t_eb90f8ffe74e8a 134-136
+  s_dded337e414d6f::t_4becdca40e2873 175-177
+webview-ui/src/components/ChatMessage.tsx
+  s_dded337e414d6f::t_fe4b38d72c6d1e 369
+src/updater.ts
+  s_dded337e414d6f::t_293cb03e5d759c 53,62-64,66-76
+src/goBridge.ts
+  s_dded337e414d6f::t_5d7144fd2fd771 154-164
+  s_dded337e414d6f::t_096d283ae0c953 75-93
+  s_dded337e414d6f::t_54e346ac98f0dc 56-57
+go-backend/TraeCN_tob_knowledge.go
+  s_dded337e414d6f::t_1c1e9464354269 13,17
+  s_dded337e414d6f::t_18971dfe15bd71 565-568
+  s_dded337e414d6f::t_22d7980d8e03c5 570-578
+  s_dded337e414d6f::t_1dc9a833df24af 601,603
+  s_dded337e414d6f::t_3ee36e3c0900d2 630-642
+  s_dded337e414d6f::t_4e9e6645698e85 231,237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "1d5bf790d34f2cb39d2b28827a450958e66e11d8",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_dded337e414d6f": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9fc2611639f83d3881e438",
+        "model": "glm-5.2__dev"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "source_scene": "unknown",
+        "dedupe_key": "6a9fc2611639f83d3881e438:6a9fd1351639f83d3881e6df:afterEdit:257010b6",
+        "tool_type": "agent",
+        "tool_id": "Edit",
+        "client_type": "ide",
+        "session_id": "6a9fc2611639f83d3881e438",
+        "external_session_id": "6a9fc2611639f83d3881e438",
+        "runtime_client": "trae-tob-git-ai",
+        "tool_use_id": "6a9fd1351639f83d3881e6df",
+        "edit_kind": "file_edit",
+        "operation_id": "6a9fd1351639f83d3881e6df"
+      }
+    }
+  }
+}
