@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react';
 import { useVsCode } from './hooks/useVsCode';
 import { ChatMessageView } from './components/ChatMessage';
 import { InputBox } from './components/InputBox';
@@ -24,6 +25,14 @@ export default function App() {
     authResult,
     uninstalled,
   } = useVsCode();
+
+  const messagesRef = useRef<HTMLDivElement>(null);
+
+  // 新消息到达或 loading 状态变化时，自动滚动到底部，确保最新内容可见
+  useEffect(() => {
+    const el = messagesRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, loading]);
 
   // 插件已卸载：显示禁用界面
   if (uninstalled) {
@@ -79,7 +88,7 @@ export default function App() {
         </div>
       </div>
 
-      <div className="messages">
+      <div className="messages" ref={messagesRef}>
         {messages.length === 0 && !loading && (
           <div className="empty-state">
             <div className="icon">💬</div>
