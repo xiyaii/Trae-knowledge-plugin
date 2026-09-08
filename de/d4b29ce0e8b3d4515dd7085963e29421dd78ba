@@ -1,0 +1,38 @@
+admin-service/auth.go
+  s_dded337e414d6f::t_b6535bf9a2804b 353-354,356
+  s_dded337e414d6f::t_cd3b866847c0ae 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "ded4b29ce0e8b3d4515dd7085963e29421dd78ba",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_dded337e414d6f": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9fc2611639f83d3881e438",
+        "model": "glm-5.2__dev"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "tool_use_id": "6a9fd8261639f83d3881e7a6",
+        "edit_kind": "file_edit",
+        "runtime_client": "trae-tob-git-ai",
+        "dedupe_key": "6a9fc2611639f83d3881e438:6a9fd8261639f83d3881e7a6:afterEdit:17b97583",
+        "source_scene": "unknown",
+        "client_type": "ide",
+        "operation_id": "6a9fd8261639f83d3881e7a6",
+        "tool_id": "Edit",
+        "session_id": "6a9fc2611639f83d3881e438",
+        "external_session_id": "6a9fc2611639f83d3881e438",
+        "tool_type": "agent"
+      }
+    }
+  }
+}
