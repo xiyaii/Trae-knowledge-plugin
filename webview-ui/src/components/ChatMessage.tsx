@@ -366,7 +366,7 @@ export function ChatMessageView({
         </ReactMarkdown>
       </div>
       {canFeedback && (
-        <div className="feedback-bar">
+        <div className={`feedback-bar${msg.feedback ? ' has-feedback' : ''}${showReason ? ' show-reason' : ''}`}>
           <button
             className={`fb-btn ${msg.feedback === 'like' ? 'active-like' : ''}`}
             onClick={handleLike}

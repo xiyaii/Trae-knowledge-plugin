@@ -10,9 +10,11 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"regexp"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -226,13 +228,13 @@ func KnowledgeServiceChat(query string, history []MessageParam) (*ServiceChatRes
 		return nil, fmt.Errorf("请求处理失败，请稍后重试或联系技术支持")
 	}
 
-	var serviceChatResp *ServiceChatResponse
+	var serviceChatResp ServiceChatResponse
 	err = json.Unmarshal(body, &serviceChatResp)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[kb_client] 响应解析失败: %s, 原始返回: %s\n", err.Error(), string(body))
 		return nil, fmt.Errorf("服务响应解析失败，请稍后重试")
 	}
-	return serviceChatResp, nil
+	return &serviceChatResp, nil
 }
 
 // SelectBestResult 从检索结果中选出相似度最高的一条（优先 rerank 得分，为 0 时退回向量得分）
@@ -560,7 +562,20 @@ func handleRequest(req KBRequest) {
 // runServer JSON Lines 协议主循环：从 stdin 读请求，向 stdout 写响应
 // 并发处理：每个请求独立 goroutine，由 concurrencySem 限制并发数（16）
 // 响应通过 emitMu 互斥写入 stdout，JS 端按 id 匹配 pending，顺序无关
+
+// wg 跟踪在途请求 goroutine，供 main 在退出前带超时等待，避免 SIGTERM 即时杀死在途 KB 查询
+var wg sync.WaitGroup
+
 func runServer() error {
+	// 接收到 SIGTERM/SIGINT 时关闭 stdin，中断 scanner.Scan() 主循环，
+	// 让在途请求（最长 55s KB 查询、3s track）有时间在 wg.Wait 中完成
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
+	go func() {
+		<-sigCh
+		// 关闭 stdin 让 scanner.Scan 返回 false，主循环退出
+		os.Stdin.Close()
+	}()
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Buffer(make([]byte, 1024*1024), 10*1024*1024)
 	for scanner.Scan() {
@@ -583,7 +598,9 @@ func runServer() error {
 		if req.Type == "track" {
 			sem = &trackSem
 		}
+		wg.Add(1)
 		go func(r KBRequest, s *chan struct{}) {
+			defer wg.Done()
 			*s <- struct{}{}
 			defer func() { <-*s }()
 			handleRequest(r)
@@ -609,5 +626,18 @@ func main() {
 			Error: "服务异常: " + err.Error(),
 		})
 		os.Exit(1)
+	}
+
+	// 优雅退出：等待在途请求（最长 55s KB 查询、3s track）完成，
+	// 8s 上限与扩展端 SIGKILL 兜底（500ms）+ JS timeout（60s）兼容，
+	// 超时后强制返回让进程退出
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(8 * time.Second):
 	}
 }

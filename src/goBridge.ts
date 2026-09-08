@@ -53,6 +53,8 @@ export class GoBridge {
   private static cachedToken: string | undefined;
   private static disposed = false;
   private static extensionPath: string | undefined;
+  // ensureProcess 的 in-flight Promise 锁，防止并发调用各自 spawn 产生孤儿进程
+  private static ensurePromise: Promise<void> | undefined;
 
   private static getBinaryPath(extensionPath: string): string {
     const platform = process.platform;
@@ -70,6 +72,25 @@ export class GoBridge {
     if (this.disposed) {
       throw new Error('插件已停用，无法启动后端服务');
     }
+    // 已有进程存活则直接复用
+    if (this.proc && !this.proc.killed) {
+      return;
+    }
+    // 并发调用复用同一个 ensure 过程，避免 await 间隙各自 spawn 产生孤儿进程
+    if (this.ensurePromise) {
+      return this.ensurePromise;
+    }
+    this.ensurePromise = this._doEnsureProcess(context);
+    try {
+      await this.ensurePromise;
+    } finally {
+      this.ensurePromise = undefined;
+    }
+  }
+
+  private static async _doEnsureProcess(
+    context: vscode.ExtensionContext
+  ): Promise<void> {
     // 每次启动前记录 extensionPath，用于后续文件系统存活检测
     this.extensionPath = context.extensionPath;
     // 文件系统存活检测：VS Code 卸载时会立即删除扩展目录
@@ -128,6 +149,17 @@ export class GoBridge {
       for (const [id, cb] of this.pending) {
         this.pending.delete(id);
         cb({ id, type: 'error', error: 'Go 后端进程已退出' });
+      }
+    });
+
+    // spawn 失败（ENOENT/EACCES/架构不匹配）会 emit 'error'，
+    // 未注册将抛 unhandled 'error' event 崩溃扩展宿主
+    this.proc.on('error', (err: Error) => {
+      console.error('[kb-server] spawn error:', err.message);
+      this.proc = undefined;
+      for (const [id, cb] of this.pending) {
+        this.pending.delete(id);
+        cb({ id, type: 'error', error: `后端启动失败: ${err.message}` });
       }
     });
   }

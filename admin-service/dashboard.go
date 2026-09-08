@@ -131,7 +131,9 @@ func (app *App) HandleDaily(w http.ResponseWriter, r *http.Request) {
 		var item DailyItem
 		var d time.Time
 		if err := rows.Scan(&d, &item.Install, &item.Login, &item.Query, &item.DAU); err != nil {
-			continue
+			log.Printf("dashboard daily 行扫描失败: %v", err)
+			http.Error(w, "Query failed", http.StatusInternalServerError)
+			return
 		}
 		item.Date = d.Format("2006-01-02")
 		items = append(items, item)
@@ -170,7 +172,9 @@ func (app *App) HandleTopDocs(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var item TopDocItem
 		if err := rows.Scan(&item.DocName, &item.Count, &item.AvgScore); err != nil {
-			continue
+			log.Printf("dashboard topdocs 行扫描失败: %v", err)
+			http.Error(w, "Query failed", http.StatusInternalServerError)
+			return
 		}
 		items = append(items, item)
 	}
@@ -209,7 +213,9 @@ func (app *App) HandleLowScore(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var item LowScoreItem
 		if err := rows.Scan(&item.Query, &item.Score, &item.DocName, &item.TS); err != nil {
-			continue
+			log.Printf("dashboard lowscore 行扫描失败: %v", err)
+			http.Error(w, "Query failed", http.StatusInternalServerError)
+			return
 		}
 		items = append(items, item)
 	}

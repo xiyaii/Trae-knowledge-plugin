@@ -50,7 +50,7 @@ function assertHttpsUrl(u: string): void {
   }
 }
 
-function fetchText(url: string): Promise<string> {
+function fetchText(url: string, redirects = 5): Promise<string> {
   return new Promise((resolve, reject) => {
     try {
       assertHttpsUrl(url);
@@ -59,9 +59,21 @@ function fetchText(url: string): Promise<string> {
       return;
     }
     const req = https.get(url, { timeout: 15000 }, (res) => {
-      if (res.statusCode !== 200) {
+      const status = res.statusCode || 0;
+      // 跟随 3xx 重定向，对齐 downloadFile 行为，兼容 TOS/CDN 跳转
+      if (status >= 300 && status < 400 && res.headers.location) {
         res.resume();
-        reject(new Error(`HTTP ${res.statusCode}`));
+        if (redirects <= 0) {
+          reject(new Error('重定向次数过多'));
+          return;
+        }
+        const next = new URL(res.headers.location, url).toString();
+        fetchText(next, redirects - 1).then(resolve, reject);
+        return;
+      }
+      if (status !== 200) {
+        res.resume();
+        reject(new Error(`HTTP ${status}`));
         return;
       }
       const chunks: Buffer[] = [];
