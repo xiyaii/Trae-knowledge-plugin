@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -349,8 +350,10 @@ func getUserInfo(accessToken string) (map[string]interface{}, error) {
 	if err := json.Unmarshal(data, &result); err != nil {
 		return nil, err
 	}
+	// 修复 log.Output 误用，勿回滚：log.Output 返回的是写日志的 I/O 错误（成功即 nil），
+	// 而非字符串包装的 error。原写法 result.Code != 0 时返回 (nil, nil) 致鉴权旁路。
 	if result.Code != 0 {
-		return nil, log.Output(2, "userinfo code: "+itoa(result.Code))
+		return nil, fmt.Errorf("userinfo code: %d", result.Code)
 	}
 	return result.Data, nil
 }
@@ -372,27 +375,4 @@ func containsUser(allowlist, uid string) bool {
 		}
 	}
 	return false
-}
-
-// itoa 简易整型转字符串
-func itoa(i int) string {
-	if i == 0 {
-		return "0"
-	}
-	neg := i < 0
-	if neg {
-		i = -i
-	}
-	var buf [20]byte
-	pos := len(buf)
-	for i > 0 {
-		pos--
-		buf[pos] = byte('0' + i%10)
-		i /= 10
-	}
-	if neg {
-		pos--
-		buf[pos] = '-'
-	}
-	return string(buf[pos:])
 }
