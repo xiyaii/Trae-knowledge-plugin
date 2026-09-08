@@ -1,0 +1,60 @@
+code-review-2026-09-08.md
+  s_dded337e414d6f::t_782b2bcff52a2b 1-249
+webview-ui/src/App.tsx
+  s_d2944aaae4ffce::t_486845511fe57d 1,29-36,91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "58588dd88a76088083ac18686c36d141ffe6bdcc",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_d2944aaae4ffce": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9fdaee1639f83d3881e808",
+        "model": "glm-5.3__dev"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "tool_id": "Write",
+        "tool_type": "agent",
+        "source_scene": "unknown",
+        "tool_use_id": "6a9fe87c1639f83d3881e9c9",
+        "runtime_client": "trae-tob-git-ai",
+        "dedupe_key": "6a9fdaee1639f83d3881e808:6a9fe87c1639f83d3881e9c9:afterEdit:08e89691",
+        "client_type": "ide",
+        "external_session_id": "6a9fdaee1639f83d3881e808",
+        "operation_id": "6a9fe87c1639f83d3881e9c9",
+        "session_id": "6a9fdaee1639f83d3881e808",
+        "edit_kind": "file_edit"
+      }
+    },
+    "s_dded337e414d6f": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9fc2611639f83d3881e438",
+        "model": "glm-5.2__dev"
+      },
+      "human_author": "yifei.eng <yifei.eng@outlook.com>",
+      "custom_attributes": {
+        "tool_use_id": "6a9fdc641639f83d3881e845",
+        "edit_kind": "file_edit",
+        "client_type": "ide",
+        "operation_id": "6a9fdc641639f83d3881e845",
+        "source_scene": "unknown",
+        "tool_type": "agent",
+        "dedupe_key": "6a9fc2611639f83d3881e438:6a9fdc641639f83d3881e845:afterEdit:da4895a2",
+        "session_id": "6a9fc2611639f83d3881e438",
+        "external_session_id": "6a9fc2611639f83d3881e438",
+        "tool_id": "Write",
+        "runtime_client": "trae-tob-git-ai"
+      }
+    }
+  }
+}
