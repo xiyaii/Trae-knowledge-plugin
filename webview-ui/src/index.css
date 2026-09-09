@@ -144,6 +144,7 @@ body {
 .bubble p:first-child { margin-top: 0; }
 .bubble p:last-child { margin-bottom: 0; }
 
+
 /* 修复列表序号溢出问题：为序号预留空间 */
 .bubble ul,
 .bubble ol {
