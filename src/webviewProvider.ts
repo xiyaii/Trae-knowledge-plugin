@@ -42,6 +42,15 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
 
     // 初始推送鉴权状态
     this.pushAuthState();
+
+    // reload window / 插件更新后鉴权状态随进程重启丢失，
+    // 静默重新校验（仅读本地 storage.json，无网络请求）；
+    // 失败不弹窗打扰，webview 维持登录页由用户手动触发
+    if (!Auth.isAuthenticated()) {
+      Auth.verify()
+        .then(() => this.pushAuthState())
+        .catch(() => {});
+    }
   }
 
   /** 推送当前鉴权状态到 Webview */
