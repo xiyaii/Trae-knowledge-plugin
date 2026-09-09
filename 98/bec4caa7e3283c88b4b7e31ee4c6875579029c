@@ -1,0 +1,14 @@
+admin-service/kb_proxy.go
+  h_59daa869d61f7f 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "98bec4caa7e3283c88b4b7e31ee4c6875579029c",
+  "prompts": {},
+  "humans": {
+    "h_59daa869d61f7f": {
+      "author": "yifei.eng <yifei.eng@outlook.com>"
+    }
+  }
+}
