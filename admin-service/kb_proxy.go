@@ -15,7 +15,7 @@ import (
 
 var kbDomain = "api-knowledgebase.mlp.cn-beijing.volces.com"
 var kbServiceChatPath = "/api/knowledge/service/chat"
-var kbServiceResourceID = "kb-service-1ca4fa064b1a45d1" //问答服务
+var kbServiceResourceID = "kb-service-ec9915d6775f18dd" //问答服务L1CSS
 
 // kbHTTPClient 全局复用连接池，避免每次请求重新建立 TCP 连接
 // - MaxIdleConnsPerHost: 10 对单 host 足够，超过则新建连接
