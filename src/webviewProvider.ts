@@ -11,6 +11,7 @@ export interface ChatMessage {
   source?: {
     doc_name: string;
     point_id?: string;
+    point_ids?: string;              // 所有相关切片ID，逗号分隔
     score: number;
   };
   error?: boolean;
@@ -145,7 +146,12 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
             this.messages.push({
               role: 'assistant',
               content,
-              source: d.doc_name ? { doc_name: d.doc_name, point_id: d.point_id, score: d.score } : undefined,
+              source: d.doc_name ? { 
+                doc_name: d.doc_name, 
+                point_id: d.point_id, 
+                point_ids: d.point_ids || d.point_id,  // 优先使用多切片，回退单切片兼容
+                score: d.score 
+              } : undefined,
               msgId: id,
             });
           }
@@ -192,6 +198,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
             query: userQuery,
             doc_name: target.source?.doc_name,
             point_id: target.source?.point_id,
+            point_ids: target.source?.point_ids || target.source?.point_id,
             answer: target.content?.slice(0, 8000),
             feedback: msg.feedback,
             feedback_reason: msg.reason,

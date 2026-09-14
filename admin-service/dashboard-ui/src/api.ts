@@ -38,7 +38,8 @@ export interface FeedbackItem {
   query: string;
   answer: string;
   doc_name: string;
-  point_id: string;
+  point_id: string;   // 兼容旧字段
+  point_ids: string;  // 所有相关切片ID，逗号分隔
   reason: string;
   ts: number;
 }

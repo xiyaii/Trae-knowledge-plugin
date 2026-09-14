@@ -24,7 +24,8 @@ type TrackEvent struct {
 	Query          string  `json:"query,omitempty"`           // query / feedback 事件
 	Score          float64 `json:"score,omitempty"`           // 仅 query 事件
 	DocName        string  `json:"doc_name,omitempty"`        // query / feedback 事件
-	PointId        string  `json:"point_id,omitempty"`        // 知识库切片ID（query / feedback 事件，火山API返回的point_id）
+	PointId        string  `json:"point_id,omitempty"`        // 知识库切片ID（兼容旧字段，单切片）
+	PointIds       string  `json:"point_ids,omitempty"`       // 所有相关知识库切片ID，逗号分隔（多切片场景）
 	Answer         string  `json:"answer,omitempty"`          // AI 回答内容（feedback 事件）
 	Platform       string  `json:"platform,omitempty"`        // darwin-arm64 / win32-x64
 	PluginVer      string  `json:"plugin_ver,omitempty"`      // 插件版本
@@ -100,6 +101,7 @@ func (s *Store) InitDB() error {
 	ALTER TABLE events ADD COLUMN IF NOT EXISTS feedback_reason TEXT;
 	ALTER TABLE events ADD COLUMN IF NOT EXISTS answer TEXT;
 	ALTER TABLE events ADD COLUMN IF NOT EXISTS point_id TEXT;
+	ALTER TABLE events ADD COLUMN IF NOT EXISTS point_ids TEXT;  -- 所有相关切片ID，逗号分隔（多切片场景）
 
 	-- P0-3: feedback 去重查询的核心索引
 	-- dashboard 按 msg_id 分区取最新一条反馈，无索引时全表扫描
@@ -112,10 +114,15 @@ func (s *Store) InitDB() error {
 
 // InsertEvent 写入一条埋点事件
 func (s *Store) InsertEvent(e TrackEvent) error {
+	// 优先使用point_ids（多切片），若为空则回退到point_id（兼容旧版本客户端）
+	pointIds := e.PointIds
+	if pointIds == "" {
+		pointIds = e.PointId
+	}
 	_, err := s.pool.Exec(context.Background(),
-		`INSERT INTO events (event_type, user_id, machine_id, msg_id, query_text, score, doc_name, point_id, answer, platform, plugin_ver, ts, feedback, feedback_reason)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-		e.Event, e.UserID, e.MachineID, e.MsgID, e.Query, e.Score, e.DocName, e.PointId, e.Answer, e.Platform, e.PluginVer, e.TS, e.Feedback, e.FeedbackReason,
+		`INSERT INTO events (event_type, user_id, machine_id, msg_id, query_text, score, doc_name, point_id, point_ids, answer, platform, plugin_ver, ts, feedback, feedback_reason)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+		e.Event, e.UserID, e.MachineID, e.MsgID, e.Query, e.Score, e.DocName, e.PointId, pointIds, e.Answer, e.Platform, e.PluginVer, e.TS, e.Feedback, e.FeedbackReason,
 	)
 	return err
 }

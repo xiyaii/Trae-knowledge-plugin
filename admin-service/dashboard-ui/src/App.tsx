@@ -515,10 +515,14 @@ export default function App() {
                       {selectedFeedback.reason || '未填写'}
                     </span>
                   </div>
-                  {selectedFeedback.point_id && (
+                  {(selectedFeedback.point_ids || selectedFeedback.point_id) && (
                     <div className="meta-row">
-                      <span className="meta-label">知识库切片ID</span>
-                      <span className="meta-value ts-mono">{selectedFeedback.point_id}</span>
+                      <span className="meta-label">引用切片ID</span>
+                      <span className="meta-value ts-mono" style={{ whiteSpace: 'pre-line', wordBreak: 'break-all' }}>
+                        {(selectedFeedback.point_ids || selectedFeedback.point_id).split(',').map((id, idx) => (
+                          <div key={idx}>{id.trim()}</div>
+                        ))}
+                      </span>
                     </div>
                   )}
                 </div>

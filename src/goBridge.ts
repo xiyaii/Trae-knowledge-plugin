@@ -17,7 +17,8 @@ export interface KBRequest {
   plugin_ver?: string;        // 插件版本
   msg_id?: string;            // 关联的 query 请求 ID（feedback 事件用）
   doc_name?: string;          // 命中文档名（feedback 事件用）
-  point_id?: string;          // 知识库切片ID（feedback 事件用）
+  point_id?: string;          // 知识库切片ID（feedback 事件用，兼容旧字段）
+  point_ids?: string;         // 所有相关知识库切片ID，逗号分隔（feedback 事件用）
   answer?: string;            // AI 回答内容（feedback 事件用，截断 8000 字符）
   feedback?: 'like' | 'dislike';
   feedback_reason?: string;   // 点踩原因（多选以分号拼接）
@@ -27,6 +28,7 @@ export interface KBResultData {
   count: number;
   doc_name: string;
   point_id: string;
+  point_ids?: string;         // 所有相关切片ID，逗号分隔
   chunk_title: string;
   score: number;
   rerank_score: number;

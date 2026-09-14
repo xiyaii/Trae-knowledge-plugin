@@ -258,6 +258,37 @@ func SelectBestResult(resp *ServiceChatResponse) (*CollectionSearchResponseItem,
 	return best, nil
 }
 
+// dataRefAttrPattern 提取内联引用标记中 data-ref 属性的值
+// 火山问答服务生成回答时，LLM 实际引用的切片以 <reference data-ref="..."/> 标注，
+// data-ref 值格式为 collection_id:point_id（见 inlineRefTagPattern 注释）
+// 兼容双引号/单引号两种属性写法
+var dataRefAttrPattern = regexp.MustCompile(`data-ref\s*=\s*["']([^"']+)["']`)
+
+// ExtractReferencedPointIds 从 LLM 生成回答的原始文本中提取实际引用的切片ID，用逗号分隔
+// 点踩详情仅需展示回答真正引用的切片（如引用了1、2切片），
+// 而非召回结果中的全部切片（召回可能有10个），需在 CleanContent 清理标记前调用
+// 按出现顺序去重；未提取到时返回空串，调用方自行回退
+func ExtractReferencedPointIds(rawAnswer string) string {
+	if rawAnswer == "" {
+		return ""
+	}
+	seen := make(map[string]bool)
+	var ids []string
+	for _, m := range dataRefAttrPattern.FindAllStringSubmatch(rawAnswer, -1) {
+		ref := m[1]
+		// data-ref 值格式为 collection_id:point_id，取最后一个冒号后的 point_id 部分
+		// （point_id 为 UUID 形式不含冒号，用 LastIndex 防御 collection_id 含冒号）
+		if idx := strings.LastIndex(ref, ":"); idx >= 0 {
+			ref = ref[idx+1:]
+		}
+		if ref != "" && !seen[ref] {
+			seen[ref] = true
+			ids = append(ids, ref)
+		}
+	}
+	return strings.Join(ids, ",")
+}
+
 // kbTagPattern 匹配知识库切片元信息标签，如 <KBDirectory>...</KBDirectory>、<KBDocName>...</KBDocName>
 var kbTagPattern = regexp.MustCompile(`(?m)^<KB[A-Za-z]+>[^<]*</KB[A-Za-z]+>\s*\n?`)
 
@@ -309,7 +340,8 @@ type KBRequest struct {
 	PluginVer      string         `json:"plugin_ver,omitempty"`      // 插件版本
 	MsgID          string         `json:"msg_id,omitempty"`          // 关联的 query 请求 ID（feedback 事件用）
 	DocName        string         `json:"doc_name,omitempty"`        // 命中文档名（feedback 事件用）
-	PointId        string         `json:"point_id,omitempty"`        // 知识库切片ID（feedback 事件用）
+	PointId        string         `json:"point_id,omitempty"`        // 知识库切片ID（feedback 事件用，兼容旧字段）
+	PointIds       string         `json:"point_ids,omitempty"`       // 所有相关知识库切片ID，逗号分隔（feedback 事件用）
 	Answer         string         `json:"answer,omitempty"`          // AI 回答内容（feedback 事件用）
 	Feedback       string         `json:"feedback,omitempty"`        // like | dislike（feedback 事件）
 	FeedbackReason string         `json:"feedback_reason,omitempty"` // 点踩原因（多选以分号拼接）
@@ -327,7 +359,8 @@ type KBResponse struct {
 type ResultData struct {
 	Count       int     `json:"count"`
 	DocName     string  `json:"doc_name"`
-	PointId     string  `json:"point_id"`
+	PointId     string  `json:"point_id"`  // 最高得分切片ID（兼容旧字段）
+	PointIds    string  `json:"point_ids"` // 所有相关切片ID，逗号分隔
 	ChunkTitle  string  `json:"chunk_title"`
 	Score       float64 `json:"score"`
 	RerankScore float64 `json:"rerank_score"`
@@ -376,7 +409,8 @@ type TrackPayload struct {
 	Query          string  `json:"query,omitempty"`
 	Score          float64 `json:"score,omitempty"`
 	DocName        string  `json:"doc_name,omitempty"`
-	PointId        string  `json:"point_id,omitempty"`
+	PointId        string  `json:"point_id,omitempty"`  // 兼容旧字段
+	PointIds       string  `json:"point_ids,omitempty"` // 所有相关切片ID，逗号分隔
 	Answer         string  `json:"answer,omitempty"`
 	Platform       string  `json:"platform,omitempty"`
 	PluginVer      string  `json:"plugin_ver,omitempty"`
@@ -431,6 +465,11 @@ func handleRequest(req KBRequest) {
 	if req.Type == "track" {
 		emitResponse(KBResponse{ID: req.ID, Type: "result", Data: map[string]interface{}{"ok": true}})
 		if req.Event != "" {
+			// 优先使用point_ids（多切片），若为空则回退到point_id（兼容旧版本）
+			pointIds := req.PointIds
+			if pointIds == "" {
+				pointIds = req.PointId
+			}
 			reportTrack(TrackPayload{
 				Event:          req.Event,
 				UserID:         req.UserID,
@@ -439,6 +478,7 @@ func handleRequest(req KBRequest) {
 				Query:          req.Query,
 				DocName:        req.DocName,
 				PointId:        req.PointId,
+				PointIds:       pointIds,
 				Answer:         req.Answer,
 				Platform:       req.Platform,
 				PluginVer:      req.PluginVer,
@@ -474,9 +514,12 @@ func handleRequest(req KBRequest) {
 	// 问答类型知识服务返回 LLM 生成的回答（知识问答），优先展示；
 	// 检索类型服务无 generated_answer，回退到下方检索切片内容
 	// 注：嵌入的 *CollectionChatCompletionResponseData 为指针，响应无对应字段时为 nil，需判空
+	rawGeneratedAnswer := ""
 	generatedAnswer := ""
 	if chatResp.Data != nil && chatResp.Data.CollectionChatCompletionResponseData != nil {
-		generatedAnswer = CleanContent(chatResp.Data.GenerateAnswer)
+		// 保留原始回答用于提取引用标记（CleanContent 会移除 <reference data-ref="..."/> 标记）
+		rawGeneratedAnswer = chatResp.Data.GenerateAnswer
+		generatedAnswer = CleanContent(rawGeneratedAnswer)
 	}
 
 	// 选出相似度最高的一条
@@ -527,6 +570,13 @@ func handleRequest(req KBRequest) {
 		mdContent = generatedAnswer
 	}
 
+	// 提取 LLM 生成回答中实际引用的切片ID（点踩详情仅展示回答真正引用的切片，
+	// 而非召回的全部切片）；无 LLM 回答或未标注引用时回退到最高得分切片ID
+	referencedPointIds := ExtractReferencedPointIds(rawGeneratedAnswer)
+	if referencedPointIds == "" {
+		referencedPointIds = best.PointId
+	}
+
 	// 先返回结果给用户，再上报埋点
 	emitResponse(KBResponse{
 		ID:   req.ID,
@@ -535,6 +585,7 @@ func handleRequest(req KBRequest) {
 			Count:       int(chatResp.Data.Count),
 			DocName:     best.DocInfo.DocName,
 			PointId:     best.PointId,
+			PointIds:    referencedPointIds,
 			ChunkTitle:  best.ChunkTitle,
 			Score:       best.Score,
 			RerankScore: best.RerankScore,
@@ -553,6 +604,7 @@ func handleRequest(req KBRequest) {
 		Score:     best.Score,
 		DocName:   best.DocInfo.DocName,
 		PointId:   best.PointId,
+		PointIds:  referencedPointIds,
 		Platform:  req.Platform,
 		PluginVer: req.PluginVer,
 		TS:        time.Now().UnixMilli(),
