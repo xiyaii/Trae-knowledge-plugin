@@ -86,8 +86,10 @@ var docURLPattern = regexp.MustCompile(`https?://www\.volcengine\.com/docs/\d+/\
 
 // cleanDocURL 剥离文档链接的 query/fragment 参数
 // skill 规则：?lang=zh 等参数需去除后才可请求，展示引用时也使用纯净链接（CleanUrl）
+// 注：docs-api 实测返回的 Url 可能带 markdown 反引号/空格拉扯（如 `https://...`），
+// 需先剥离再解析，否则引用链接在 webview 中会渲染为代码样式（不可点击）
 func cleanDocURL(raw string) string {
-	u, err := url.Parse(strings.TrimSpace(raw))
+	u, err := url.Parse(strings.Trim(strings.TrimSpace(raw), "` \t"))
 	if err != nil {
 		return raw
 	}

@@ -523,6 +523,11 @@ func reportTrack(payload TrackPayload) {
 // 保持固定文案方案，不采用 LLM 兜底话术，确保引导用户联系技术支持
 const noResultContent = "抱歉未找到相关信息，请寻找Trae技术支持进行确认"
 
+// kbRejectPhrase 火山知识库后台配置的拒答话术特征前缀（与 noResultContent 同源）：
+// 该文案会随检索结果正常返回（得分可能 ≥ 0.2 阈值），不拦截会绕过官方文档兜底；
+// 用 Contains 前缀匹配，兼容后台话术尾部句号等微调
+const kbRejectPhrase = "抱歉未找到相关信息，请寻找Trae技术支持"
+
 // handleRequest 处理单个请求
 func handleRequest(req KBRequest) {
 	// track 类型：埋点上报，不经过鉴权（install 时用户可能未登录）
@@ -676,6 +681,37 @@ func handleRequest(req KBRequest) {
 			TS:        time.Now().UnixMilli(),
 		})
 		return
+	}
+
+	// 知识库拒答话术识别：KB 后台的拒答文案随检索结果正常返回（得分可能 ≥ 0.2），
+	// 视为知识库未命中转官方文档兜底；兜底失败则维持原行为（展示知识库原始回答）
+	if generatedAnswer != "" && strings.Contains(generatedAnswer, kbRejectPhrase) {
+		if ans, derr := DocsAnswerFallback(req.Query); derr == nil {
+			emitResponse(KBResponse{
+				ID:   req.ID,
+				Type: "result",
+				Data: ResultData{
+					Count:     0,
+					DocName:   "官方文档",
+					Score:     best.Score,
+					Content:   ans,
+					MdContent: ans,
+				},
+			})
+			reportTrack(TrackPayload{
+				Event:     "query",
+				UserID:    req.UserID,
+				MachineID: req.MachineID,
+				MsgID:     req.ID,
+				Query:     req.Query,
+				Score:     best.Score,
+				DocName:   "官方文档",
+				Platform:  req.Platform,
+				PluginVer: req.PluginVer,
+				TS:        time.Now().UnixMilli(),
+			})
+			return
+		}
 	}
 
 	// 优先使用知识问答回答（LLM 生成），无生成回答时回退检索切片的 markdown 内容
