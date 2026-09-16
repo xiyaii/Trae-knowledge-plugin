@@ -17,6 +17,9 @@ type Config struct {
 	AllowLarkUsers  string // 可选：飞书 user_id 白名单，逗号分隔；为空则允许所有飞书用户
 	// 知识库代理配置
 	KBApiKey string // 火山引擎知识库 APIKey（仅存于服务端，不进入插件）
+	// 官方文档兜底配置（/kb/docs-answer，可选：未配置 ARKApiKey 时该接口返回 501，不影响 /kb/chat）
+	ARKApiKey string // 方舟 APIKey（ark- 开头），用于合成文档兜底回答，仅存服务端
+	ARKModel  string // 方舟模型 ID，如 doubao-seed-1.6-250615
 }
 
 // LoadConfig 从环境变量加载配置
@@ -30,6 +33,8 @@ func LoadConfig() (*Config, error) {
 		LarkRedirectURL: os.Getenv("LARK_REDIRECT_URL"),
 		AllowLarkUsers:  os.Getenv("ALLOW_LARK_USERS"),
 		KBApiKey:        os.Getenv("KB_API_KEY"),
+		ARKApiKey:       os.Getenv("ARK_API_KEY"),
+		ARKModel:        getEnv("ARK_MODEL", "doubao-seed-1.6-250615"),
 	}
 
 	if cfg.DBDSN == "" {

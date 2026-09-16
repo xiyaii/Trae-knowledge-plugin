@@ -39,6 +39,10 @@ func main() {
 	// 插件 go-backend 通过此接口调用火山引擎知识库，APIKey 仅存于服务端
 	mux.HandleFunc("/kb/chat", app.HandleKBChat)
 
+	// 官方文档兜底接口（公网，X-Track-Token 鉴权）
+	// 知识库低分/无结果时由插件调用：检索火山官方文档（限 Trae 产品）并由方舟 LLM 合成回答
+	mux.HandleFunc("/kb/docs-answer", app.HandleDocsAnswer)
+
 	// 飞书 SSO 登录（公开路由，不需要鉴权）
 	mux.HandleFunc("/auth/login", app.handleLogin)
 	mux.HandleFunc("/auth/callback", app.handleCallback)

@@ -27,10 +27,14 @@ var kbProxyURL = ""
 var trackEndpoint = ""
 var trackToken = ""
 
-// LoadConfig 加载配置：校验 kbProxyURL 已注入
+// LoadConfig 加载配置：校验 kbProxyURL 已注入且以 /kb/chat 结尾
+// （docsAnswerURL 依赖该后缀推导 /kb/docs-answer 地址，格式错误会导致兜底接口 404 静默失效）
 func LoadConfig() error {
 	if kbProxyURL == "" {
 		return fmt.Errorf("kbProxyURL 未配置：请在编译时通过 -ldflags -X main.kbProxyURL 注入 admin-service 代理地址")
+	}
+	if !strings.HasSuffix(kbProxyURL, "/kb/chat") {
+		return fmt.Errorf("kbProxyURL 格式错误：需以 /kb/chat 结尾（当前用于推导 /kb/docs-answer 地址）")
 	}
 	return nil
 }
@@ -235,6 +239,67 @@ func KnowledgeServiceChat(query string, history []MessageParam) (*ServiceChatRes
 		return nil, fmt.Errorf("服务响应解析失败，请稍后重试")
 	}
 	return &serviceChatResp, nil
+}
+
+// docsAnswerURL 从 kbProxyURL 推导 /kb/docs-answer 地址（同 host 替换路径；kbProxyURL 需以 /kb/chat 结尾）
+func docsAnswerURL() string {
+	return strings.TrimSuffix(kbProxyURL, "/kb/chat") + "/kb/docs-answer"
+}
+
+// docsFallbackRequest /kb/docs-answer 请求体
+type docsFallbackRequest struct {
+	Query string `json:"query"`
+}
+
+// docsFallbackResponse /kb/docs-answer 响应体
+type docsFallbackResponse struct {
+	Answer string `json:"answer"`
+}
+
+// DocsAnswerFallback 知识库未命中时通过 admin-service 检索火山官方文档生成回答
+// 服务端完成 docs 检索（限 Trae 产品）+ fetch 全文 + 方舟合成；失败返回 error，调用方回退固定文案
+func DocsAnswerFallback(query string) (string, error) {
+	body, _ := json.Marshal(docsFallbackRequest{Query: query})
+	req, err := http.NewRequest("POST", docsAnswerURL(), bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	// 复用 trackToken 作为 /kb/docs-answer 的鉴权 token（与 /kb/chat 一致）
+	if trackToken != "" {
+		req.Header.Set("X-Track-Token", trackToken)
+	}
+	// 超时 48s：覆盖服务端最坏 46s（search 8s + fetch 8s + 方舟 30s）+ 网络余量，
+	// 避免客户端先超时产生孤儿 ARK 调用浪费 token；知识库未命中/低分通常 5-10s 快速返回，
+	// 与 48s 合计仍在扩展端 60s 总预算内（极端双慢场景由 JS 端 60s 超时兜底）
+	client := &http.Client{Timeout: 48 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[docs_fallback] 请求失败: %v\n", err)
+		return "", sanitizeError(err)
+	}
+	defer resp.Body.Close()
+
+	raw, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[docs_fallback] ReadAll 错误: %v\n", err)
+		return "", fmt.Errorf("服务响应读取失败")
+	}
+	if resp.StatusCode != http.StatusOK {
+		// 详细错误仅记日志，调用方回退固定文案
+		fmt.Fprintf(os.Stderr, "[docs_fallback] 非200: status=%d body=%s\n", resp.StatusCode, string(raw))
+		return "", fmt.Errorf("官方文档服务暂不可用")
+	}
+	var parsed docsFallbackResponse
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		fmt.Fprintf(os.Stderr, "[docs_fallback] 响应解析失败: %v\n", err)
+		return "", fmt.Errorf("官方文档响应解析失败")
+	}
+	if parsed.Answer == "" {
+		// 官方文档也未命中（answer 为空）
+		return "", fmt.Errorf("官方文档未命中")
+	}
+	return parsed.Answer, nil
 }
 
 // SelectBestResult 从检索结果中选出相似度最高的一条（优先 rerank 得分，为 0 时退回向量得分）
@@ -525,6 +590,28 @@ func handleRequest(req KBRequest) {
 	// 选出相似度最高的一条
 	best, err := SelectBestResult(chatResp)
 	if err != nil {
+		// 检索无结果：先尝试官方文档兜底（volc-docs skill），失败再返回固定文案
+		if ans, derr := DocsAnswerFallback(req.Query); derr == nil {
+			// DocName="官方文档"：使 webview 来源标签生效，点踩上报可区分回答来源
+			emitResponse(KBResponse{
+				ID:   req.ID,
+				Type: "result",
+				Data: ResultData{Count: 0, DocName: "官方文档", Content: ans, MdContent: ans},
+			})
+			// 先返回结果给用户，再上报埋点（与低分兜底路径对称，确保看板不漏官方文档覆盖量）
+			reportTrack(TrackPayload{
+				Event:     "query",
+				UserID:    req.UserID,
+				MachineID: req.MachineID,
+				MsgID:     req.ID,
+				Query:     req.Query,
+				DocName:   "官方文档",
+				Platform:  req.Platform,
+				PluginVer: req.PluginVer,
+				TS:        time.Now().UnixMilli(),
+			})
+			return
+		}
 		// 检索无结果：返回固定文案，不采用 LLM 兜底话术（保持原方案）
 		emitResponse(KBResponse{
 			ID:   req.ID,
@@ -538,6 +625,34 @@ func handleRequest(req KBRequest) {
 	// 注：火山向量检索得分范围通常 0.2-0.5，0.5 阈值过于严格会误杀有效结果
 	// 检索质量主要由火山知识库后台的 embedding/rerank 配置控制，此处仅做兜底过滤
 	if best.Score < 0.2 {
+		// 知识库低分：先尝试官方文档兜底（volc-docs skill），失败走原固定文案逻辑
+		if ans, derr := DocsAnswerFallback(req.Query); derr == nil {
+			// 先返回结果给用户，再上报埋点（埋点仍记录真实低分，保留知识库覆盖缺口分析）
+			emitResponse(KBResponse{
+				ID:   req.ID,
+				Type: "result",
+				Data: ResultData{
+					Count:     0,
+					DocName:   "官方文档", // 使 webview 来源标签生效，点踩上报可区分回答来源
+					Score:     best.Score,
+					Content:   ans,
+					MdContent: ans,
+				},
+			})
+			reportTrack(TrackPayload{
+				Event:     "query",
+				UserID:    req.UserID,
+				MachineID: req.MachineID,
+				MsgID:     req.ID,
+				Query:     req.Query,
+				Score:     best.Score,
+				DocName:   "官方文档", // 标记回答来源，看板热门文档/覆盖分析可区分知识库与官方文档
+				Platform:  req.Platform,
+				PluginVer: req.PluginVer,
+				TS:        time.Now().UnixMilli(),
+			})
+			return
+		}
 		// 先返回结果给用户，再上报埋点（避免埋点阻塞用户响应）
 		emitResponse(KBResponse{
 			ID:   req.ID,
